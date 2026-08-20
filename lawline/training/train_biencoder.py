@@ -1,6 +1,7 @@
 """Domain-adapt the bi-encoder on (legal query -> governing provision) pairs.
 
-Loss   : MultipleNegativesRankingLoss with in-batch negatives + 1 BM25-mined hard negative per query
+Loss   : MultipleNegativesRankingLoss with in-batch negatives + 1 dense-mined hard negative per query
+         (top non-positive hit of the *base* model's FAISS index, i.e. the base model's own confusions)
 Data   : data/processed/train_pairs.jsonl (BNS-QA, Hanno facts->IPC, Constitution QA) — gold queries/sections excluded
 Output : outputs/models/lawline-bge-small-legal
 """
@@ -14,7 +15,8 @@ from sentence_transformers import SentenceTransformer, SentenceTransformerTraine
 from ..config import DATA_PROCESSED, INDEX_DIR, MODEL_DIR, BASE_EMBEDDING_MODEL
 from ..data.schema import read_jsonl
 from ..data.chunking import load_chunks
-from ..index.bm25_index import BM25Index
+from ..index.faiss_index import FaissIndex
+from ..index.embedder import Embedder
 
 SEED = 13
 
@@ -33,20 +35,24 @@ def build_training_set(max_per_task: dict, hard_neg: bool = True, max_chars: int
             by_task[p["task"]].append(p)
     pairs = [p for ps in by_task.values() for p in ps]; rnd.shuffle(pairs)
     rows = {"anchor": [], "positive": [], "negative": []}
-    bm25 = BM25Index.load(INDEX_DIR / "bm25") if hard_neg else None
     t = time.perf_counter()
+    hits = None
+    if hard_neg:
+        emb = Embedder(BASE_EMBEDDING_MODEL); fi = FaissIndex.load(INDEX_DIR / "faiss_base")
+        qv = emb.encode_passages([p["query"][:max_chars] for p in pairs]) if not emb.use_prefix else emb.encode_queries([p["query"][:max_chars] for p in pairs])
+        hits = fi.search(qv, 8)
+        print(f"  mined hard negatives for {len(pairs)} queries in {time.perf_counter() - t:.0f}s", flush=True)
+    keys = list(first_chunk)
     for i, p in enumerate(pairs):
         neg = None
-        if bm25:
-            for cid, _ in bm25.search(p["query"][:600], 5):
+        if hits is not None:
+            for cid, _ in hits[i]:
                 d = cid.split("#c")[0]
                 if d != p["pos_doc"] and d in first_chunk:
                     neg = first_chunk[d]; break
         if neg is None:
-            neg = first_chunk[rnd.choice(list(first_chunk))]
+            neg = first_chunk[rnd.choice(keys)]
         rows["anchor"].append(p["query"][:max_chars]); rows["positive"].append(first_chunk[p["pos_doc"]]); rows["negative"].append(neg)
-        if i % 2000 == 0:
-            print(f"  mined {i}/{len(pairs)} ({time.perf_counter() - t:.0f}s)")
     print("task mix:", Counter(p["task"] for p in pairs))
     return Dataset.from_dict(rows)
 
@@ -70,7 +76,7 @@ def main():
         output_dir=str(Path(a.out) / "checkpoints"), num_train_epochs=a.epochs, per_device_train_batch_size=a.batch,
         learning_rate=a.lr, warmup_ratio=0.1, lr_scheduler_type="linear", weight_decay=0.01, seed=SEED,
         logging_steps=50, save_strategy="no", report_to=[], dataloader_drop_last=True,
-        fp16=False, bf16=False, use_mps_device=False,
+        fp16=False, bf16=False,
     )
     t = time.perf_counter()
     trainer = SentenceTransformerTrainer(model=model, args=args, train_dataset=ds, loss=loss)
