@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import json
 import numpy as np
+import torch  # noqa: F401  -- must be imported before faiss so both share one OpenMP runtime (macOS)
 import faiss
 
 # faiss-cpu and torch ship separate OpenMP runtimes; on macOS a multi-threaded faiss search after torch

@@ -164,6 +164,30 @@ def hanno_split() -> tuple[pd.DataFrame, pd.DataFrame]:
     return df[~df.case_key.isin(test_keys)].copy(), df[df.case_key.isin(test_keys)].copy()
 
 
+COURT_PAT = re.compile(r"IN THE (HIGH COURT OF [A-Z .]+?)(?=\s+(?:CRIMINAL|CIVIL|WRIT|LETTERS|FIRST|SECOND|MISC|APPEAL|BAIL|C\.R\.|CR\.|CRL|M\.?A\.|W\.P|L\.P|R\.S|F\.A|S\.A|\d|=))", re.I)
+PARTY_CLEAN = re.compile(r"\s*(?:S/O|D/O|W/O|SON OF|DAUGHTER OF|WIFE OF|R/O|RESIDENT OF|@|,|\.\.\.\.|\bAND ORS\b|\bAND ANR\b|\bAND OTHERS\b|\bTHROUGH\b).*$", re.I)
+
+
+def _party(s: str) -> str:
+    s = re.sub(r"^\s*\d+\.\s*", "", s.strip())
+    s = re.split(r"\s+\d+\.\s+", s)[0]            # keep first of numbered parties
+    s = PARTY_CLEAN.sub("", s).strip(" .-")
+    return re.sub(r"\s+", " ", s).title()[:60]
+
+
+def parse_hc_header(facts: str) -> tuple[str, str]:
+    m = COURT_PAT.search(facts[:300])
+    court = m.group(1).strip().title() if m else "High Court"
+    head = facts[:700]
+    t = re.search(r"=+\s*(.+?)\s+(?:Versus|Vs\.?|V/S|V\.)\s+(.+?)(?:\.{2,}|\s+Opposite|\s+Respondent|=)", head, re.I | re.S)
+    if t:
+        a, b = _party(t.group(1)), _party(t.group(2))
+        title = f"{a} v. {b}" if a and b else None
+    else:
+        title = None
+    return title or "", court
+
+
 def load_hc_excerpts(train_df: pd.DataFrame) -> list[Document]:
     grp = train_df.groupby("case_key")
     keys = sorted(grp.groups.keys())
@@ -172,14 +196,12 @@ def load_hc_excerpts(train_df: pd.DataFrame) -> list[Document]:
     for k in keys[:HC_CASES_IN_CORPUS]:
         g = grp.get_group(k)
         facts = g.case_facts.iloc[0]
-        m = re.match(r"(IN THE HIGH COURT[^=]*?)(?:\s{2,}|=)", facts)
-        court = m.group(1).strip().title() if m else "High Court"
-        title_m = re.search(r"=+\s*(.+?)\s+(?:Versus|Vs\.?|V/S|vs\.?)\s+(.+?)\s+\.{2,}", facts, re.I)
-        title = f"{title_m.group(1).strip()} v. {title_m.group(2).strip()}"[:140] if title_m else f"HC Case {k}"
-        ym = re.search(r"\b(19|20)(\d\d)\b", facts[:400])
+        title, court = parse_hc_header(facts)
+        title = title or f"High Court Criminal Matter {k[:6]}"
+        ym = re.search(r"\b(?:19|20)\d\d\b", facts[:400])
         docs.append(Document(
             doc_id=f"case::hc::{k}", doc_type="case", source="Hanno-Labs/HC-IPC", title=title, text=facts,
-            court=court[:80], year=int(ym.group(0)) if ym else None,
+            court=court, year=int(ym.group(0)) if ym else None,
             cited_sections=[{"act": "Indian Penal Code, 1860", "section": s} for s in sorted(set(g.ipc_section))],
         ))
     return docs

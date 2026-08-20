@@ -47,6 +47,9 @@ def test_kg_build_and_retrieve(tiny_corpus_path, tiny_chunks):
     assert hits and hits[0][0].startswith("case::test::maneka")
     # bare section code without act defaults to IPC/BNS family
     assert kg.retrieve("cheating u/s 420 case")[0][0].startswith("statute::indian-penal-code-1860::420")
-    assert kg.retrieve("cheating 420 case") == []          # bare numbers without a cue are ignored (ambiguous)
+    assert kg.retrieve("plain 420 case") == []             # bare numbers without a cue are ignored (ambiguous)
+    # concept layer bridges vocabulary gaps ("cheating" never needs the section number)
+    assert kg.extract_mentions("is cheating punishable?")["concepts"] == ["cheating"]
+    assert kg.retrieve("is cheating punishable?")[0][0].startswith("statute::indian-penal-code-1860::4")
     # section 420 expansion reaches 415 via REFERS_TO
     assert any(k.startswith("statute::indian-penal-code-1860::415") for k, _ in kg.retrieve("section 420 IPC"))

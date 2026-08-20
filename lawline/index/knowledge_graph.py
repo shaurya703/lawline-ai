@@ -14,6 +14,7 @@ from pathlib import Path
 import networkx as nx
 from ..data.schema import Document, read_jsonl
 from ..data.ingest import slug
+from .concepts import CONCEPTS
 
 ALIASES = {
     "Indian Penal Code, 1860": ["ipc", "indian penal code", "penal code"],
@@ -66,6 +67,7 @@ class LegalKG:
         self.node_chunks: dict[str, list[str]] = defaultdict(list)
         self.case_title_index: dict[str, str] = {}
         self.topic_index: dict[str, str] = {}
+        self.concept_index: dict[str, str] = {}
 
     # ------------------------------------------------------------------ build
     @classmethod
@@ -81,7 +83,7 @@ class LegalKG:
                 a, s = f"act:{slug(d.act)}", f"sec:{slug(d.act)}:{d.section.upper()}"
                 if a not in kg.g:
                     kg.g.add_node(a, kind="act", label=d.act); acts.add(d.act)
-                kg.g.add_node(s, kind="section", label=f"Section {d.section}, {d.act}", doc_id=d.doc_id)
+                kg.g.add_node(s, kind="section", label=f"Section {d.section}, {d.act}", doc_id=d.doc_id, title=d.title)
                 kg.g.add_edge(a, s, rel="HAS_SECTION")
                 kg.node_chunks[s] = doc_chunks[d.doc_id]
         for d in docs:
@@ -125,6 +127,15 @@ class LegalKG:
                     kg.act_by_alias[a] = f"act:{slug(act)}"
         for act in acts:  # full act names are aliases of themselves
             kg.act_by_alias[act.lower()] = f"act:{slug(act)}"
+        for phrase, provs in CONCEPTS.items():
+            cn = f"concept:{slug(phrase)}"
+            targets = [f"sec:{slug(a)}:{n.upper()}" for a, n in provs]
+            targets = [t for t in targets if t in kg.g]
+            if targets:
+                kg.g.add_node(cn, kind="concept", label=phrase)
+                for t in targets:
+                    kg.g.add_edge(cn, t, rel="GOVERNED_BY")
+                kg.concept_index[phrase] = cn
         return kg
 
     # ------------------------------------------------------------------ query
@@ -144,7 +155,13 @@ class LegalKG:
         bare = [b for b in BARE_SEC.findall(query) if b not in sections]
         cases = [f"{a.strip()} v. {b.strip()}" for a, b in CASE_PAT.findall(query)]
         topics = [t for t in self.topic_index if len(t) > 6 and t in q]
-        return {"acts": acts, "sections": sections, "articles": articles, "bare": bare, "cases": cases, "topics": topics}
+        concepts, taken = [], []
+        for phrase in sorted(self.concept_index, key=len, reverse=True):
+            m = re.search(rf"(?<![a-z]){re.escape(phrase)}(?:s|es)?(?![a-z])", q)
+            if m and not any(a <= m.start() < b or a < m.end() <= b for a, b in taken):
+                concepts.append(phrase); taken.append((m.start(), m.end()))
+        return {"acts": acts, "sections": sections, "articles": articles, "bare": bare, "cases": cases,
+                "topics": topics, "concepts": concepts}
 
     def _sec_nodes(self, act_node: str, num: str) -> list[str]:
         n = f"sec:{act_node[4:]}:{num}"
@@ -169,13 +186,19 @@ class LegalKG:
             qw = set(re.findall(r"[a-z]{4,}", query.lower()))
             for a in m["acts"]:
                 for _, s in self.g.out_edges(a):
-                    lw = set(re.findall(r"[a-z]{4,}", self.g.nodes[s].get("label", "").lower()))
+                    lw = set(re.findall(r"[a-z]{4,}", self.g.nodes[s].get("title", self.g.nodes[s].get("label", "")).lower()))
                     cid = self.node_chunks.get(s)
                     if cid:
                         # use first-chunk text title words via label only (cheap)
                         ov = len(qw & lw)
                         if ov:
                             node_scores[s] = max(node_scores[s], 0.3 + 0.1 * ov)
+        for phrase in m["concepts"]:
+            cn = self.concept_index[phrase]
+            for _, sec in self.g.out_edges(cn):
+                act_node = "act:" + sec.split(":")[1]
+                boost = 0.95 if (not m["acts"] or act_node in m["acts"]) else 0.6
+                node_scores[sec] = max(node_scores[sec], boost)
         for cs in m["cases"]:
             cw = set(_norm_title(cs))
             for title, node in self.case_title_index.items():

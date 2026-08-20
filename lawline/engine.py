@@ -40,6 +40,9 @@ class QueryEngine:
             resp = self.llm.complete(SYSTEM_PROMPT, USER_TEMPLATE.format(context=format_context(rr.passages), question=question))
             text, backend, model = resp.text, resp.backend, resp.model
             timings["generation"] = resp.latency_ms
+            timings["llm_retries"] = len(resp.errors or [])
+            if resp.errors:
+                self.last_llm_errors = resp.errors
         else:
             text = extractive_answer(rr.passages)
         cited = sorted({int(n) for grp in re.findall(r"\[((?:\d+\s*,\s*)*\d+)\]", text) for n in re.split(r"\s*,\s*", grp)})

@@ -17,6 +17,7 @@ class LLMResponse:
     latency_ms: float
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    errors: list = None
 
 
 class LLMClient:
@@ -72,9 +73,15 @@ class LLMClient:
                 continue
             for attempt in range(retries + 1):
                 try:
-                    return fn(system, user)
-                except Exception as e:   # rate limits, network
+                    resp = fn(system, user)
+                    resp.errors = list(errors)
+                    return resp
+                except Exception as e:   # rate limits, network, auth
                     errors.append(f"{name}: {e}")
+                    msg = str(e)
+                    if "401" in msg or "invalid api key" in msg.lower() or "expired" in msg.lower() or "403" in msg:
+                        setattr(self, f"_{name}", None)      # disable dead backend for the rest of the session
+                        break
                     time.sleep(1.5 * (attempt + 1))
         raise RuntimeError("All LLM backends failed: " + " | ".join(errors[-3:]))
 
