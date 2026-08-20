@@ -1,19 +1,25 @@
 /Users/shauryakesarwani/lawline-ai/lawline/training/train_biencoder.py:14: DeprecationWarning: Importing from 'sentence_transformers.losses' is deprecated and will be removed in a future version. Please use 'sentence_transformers.sentence_transformer.losses' instead.
-  from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, losses
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 3995.91it/s]
-/Users/shauryakesarwani/lawline-ai/lawline/index/embedder.py:29: FutureWarning: The `get_sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
-  self.dim = self.model.get_sentence_embedding_dimension()
-  mined hard negatives for 13016 queries in 95s
-task mix: Counter({'ipc_facts': 7000, 'bns_qa': 5724, 'const_qa': 292})
+  from sentence_transformers import SentenceTransformer, losses
 train examples: 13016
-Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 7328.26it/s]
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "/Users/shauryakesarwani/lawline-ai/lawline/training/train_biencoder.py", line 93, in <module>
-    main()
-  File "/Users/shauryakesarwani/lawline-ai/lawline/training/train_biencoder.py", line 75, in main
-    args = SentenceTransformerTrainingArguments(
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-TypeError: SentenceTransformerTrainingArguments.__init__() got an unexpected keyword argument 'use_mps_device'
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 8261.73it/s]
+trainable params: 10.8M / 33.4M
+  step 1/813 loss 3.4066 (5s)
+  step 50/813 loss 1.8017 (331s)
+  step 100/813 loss 1.4060 (622s)
+  step 150/813 loss 1.0535 (712s)
+  step 200/813 loss 0.8354 (804s)
+  step 250/813 loss 1.0967 (894s)
+  step 300/813 loss 1.4349 (986s)
+  step 350/813 loss 0.9394 (1079s)
+  step 400/813 loss 1.1497 (1173s)
+  step 450/813 loss 1.1148 (1271s)
+  step 500/813 loss 1.0426 (1368s)
+  step 550/813 loss 0.8015 (1464s)
+  step 600/813 loss 0.8964 (1562s)
+  step 650/813 loss 1.6143 (1658s)
+  step 700/813 loss 0.8733 (1752s)
+  step 750/813 loss 0.8320 (1846s)
+  step 800/813 loss 0.9093 (1944s)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  3.33it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  3.33it/s]
+saved /Users/shauryakesarwani/lawline-ai/outputs/models/lawline-bge-small-legal 1971s

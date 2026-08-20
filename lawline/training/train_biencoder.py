@@ -11,7 +11,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 import torch
 from datasets import Dataset
-from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, losses
+from sentence_transformers import SentenceTransformer, losses
+from sentence_transformers.util import batch_to_device
 from ..config import DATA_PROCESSED, INDEX_DIR, MODEL_DIR, BASE_EMBEDDING_MODEL
 from ..data.schema import read_jsonl
 from ..data.chunking import load_chunks
@@ -66,26 +67,64 @@ def main():
     ap.add_argument("--lr", type=float, default=3e-5)
     ap.add_argument("--max-bns", type=int, default=5724); ap.add_argument("--max-ipc", type=int, default=7000); ap.add_argument("--max-const", type=int, default=292)
     ap.add_argument("--no-hard-neg", action="store_true"); ap.add_argument("--seq-len", type=int, default=256)
+    ap.add_argument("--device", default=None, help="cpu | mps | cuda (default: auto). On 8 GB Macs use cpu: MPS SDPA with padding masks needs >2 GB even at batch 8")
+    ap.add_argument("--freeze-layers", type=int, default=0, help="freeze embeddings + the first N transformer layers (parameter-efficient; less memory)")
+    ap.add_argument("--prepare-only", action="store_true", help="mine triplets to data/processed/train_triplets.parquet and exit")
+    ap.add_argument("--from-prepared", action="store_true", help="train from the prepared parquet (keeps the trainer process small)")
     a = ap.parse_args()
     torch.manual_seed(SEED)
-    ds = build_training_set({"bns_qa": a.max_bns, "ipc_facts": a.max_ipc, "const_qa": a.max_const}, hard_neg=not a.no_hard_neg)
+    prepared = DATA_PROCESSED / "train_triplets.parquet"
+    if a.from_prepared and prepared.exists():
+        ds = Dataset.from_parquet(str(prepared))
+    else:
+        ds = build_training_set({"bns_qa": a.max_bns, "ipc_facts": a.max_ipc, "const_qa": a.max_const}, hard_neg=not a.no_hard_neg)
+        ds.to_parquet(str(prepared))
+        if a.prepare_only:
+            print("prepared", len(ds), "triplets ->", prepared); return
     print("train examples:", len(ds))
-    model = SentenceTransformer(a.base); model.max_seq_length = a.seq_len
-    loss = losses.MultipleNegativesRankingLoss(model)
-    args = SentenceTransformerTrainingArguments(
-        output_dir=str(Path(a.out) / "checkpoints"), num_train_epochs=a.epochs, per_device_train_batch_size=a.batch,
-        learning_rate=a.lr, warmup_ratio=0.1, lr_scheduler_type="linear", weight_decay=0.01, seed=SEED,
-        logging_steps=50, save_strategy="no", report_to=[], dataloader_drop_last=True,
-        fp16=False, bf16=False,
-    )
-    t = time.perf_counter()
-    trainer = SentenceTransformerTrainer(model=model, args=args, train_dataset=ds, loss=loss)
-    trainer.train()
-    model.save(a.out)
-    hist = [h for h in trainer.state.log_history if "loss" in h]
-    json.dump({"base": a.base, "examples": len(ds), "epochs": a.epochs, "batch": a.batch, "lr": a.lr, "seq_len": a.seq_len,
-               "hard_negatives": not a.no_hard_neg, "train_seconds": time.perf_counter() - t, "device": str(model.device),
-               "loss_history": hist}, open(Path(a.out) / "train_meta.json", "w"), indent=2)
+    model = SentenceTransformer(a.base, device=a.device); model.max_seq_length = a.seq_len
+    device = model.device
+    if a.freeze_layers:
+        hf = model[0].auto_model
+        for p_ in hf.embeddings.parameters():
+            p_.requires_grad = False
+        for layer in hf.encoder.layer[: a.freeze_layers]:
+            for p_ in layer.parameters():
+                p_.requires_grad = False
+    trainable = [p_ for p_ in model.parameters() if p_.requires_grad]
+    print(f"trainable params: {sum(p_.numel() for p_ in trainable) / 1e6:.1f}M / {sum(p_.numel() for p_ in model.parameters()) / 1e6:.1f}M", flush=True)
+    loss_fn = losses.MultipleNegativesRankingLoss(model)
+    opt = torch.optim.AdamW(trainable, lr=a.lr, weight_decay=0.01)
+    n = len(ds); steps_per_epoch = n // a.batch; total = int(steps_per_epoch * a.epochs); warm = max(1, int(0.1 * total))
+    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda st: min((st + 1) / warm, max(0.0, (total - st) / max(1, total - warm))))
+    anchors, positives, negatives = ds["anchor"], ds["positive"], ds["negative"]
+    tok = model.tokenizer
+    hist, t = [], time.perf_counter()
+    model.train(); step = 0; rnd = random.Random(SEED)
+    # lean manual loop: the HF Trainer path thrashed memory on an 8 GB laptop; this uses < 1 GB on MPS
+    while step < total:
+        order = list(range(n)); rnd.shuffle(order)
+        for b in range(steps_per_epoch):
+            if step >= total:
+                break
+            idx = order[b * a.batch:(b + 1) * a.batch]
+            # fixed-shape batches: the MPS caching allocator keeps one buffer per distinct shape, so variable padding
+            # makes wired memory grow without bound on unified-memory Macs
+            feats = [batch_to_device(dict(tok([col[i] for i in idx], padding="max_length", truncation=True,
+                                              max_length=a.seq_len, return_tensors="pt")), device)
+                     for col in (anchors, positives, negatives)]
+            loss = loss_fn(feats, None)
+            loss.backward(); torch.nn.utils.clip_grad_norm_(trainable, 1.0)
+            opt.step(); sched.step(); opt.zero_grad(set_to_none=True)
+            if device.type == "mps":
+                torch.mps.synchronize()          # bound the queued-kernel memory on unified-memory GPUs
+                if step % 25 == 0:
+                    torch.mps.empty_cache()
+            step += 1
+            if step % 50 == 0 or step == 1:
+                hist.append({"step": step, "loss": float(loss.item()), "lr": sched.get_last_lr()[0]})
+                print(f"  step {step}/{total} loss {loss.item():.4f} ({time.perf_counter() - t:.0f}s)", flush=True)
+    model.eval(); model.save(a.out)
     print("saved", a.out, f"{time.perf_counter() - t:.0f}s")
 
 

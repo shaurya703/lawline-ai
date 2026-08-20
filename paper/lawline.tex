@@ -1,0 +1,96 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite,amsmath,amssymb,graphicx,booktabs,url,hyperref,xcolor}
+\graphicspath{{../outputs/figures/}}
+\newcommand{\sys}{LawLine AI}
+
+\begin{document}
+\title{\sys: Knowledge-Graph-Augmented Hybrid Retrieval for Grounded Indian Legal Question Answering}
+
+\author{\IEEEauthorblockN{Saiprasad Benagi, Vaibhav Srivastava, Hita Rajashekhar, Shaurya Kesarwani, Nagegowda K S}
+\IEEEauthorblockA{Department of Computer Science and Engineering, PES University, Bengaluru, India}}
+\maketitle
+
+\begin{abstract}
+Large language models answer legal questions fluently but unreliably: recent audits report hallucination rates of 17--33\% even in commercial retrieval-augmented legal tools. We present \sys, an open, reproducible retrieval-augmented generation (RAG) system for Indian law that grounds every answer in retrieved statutory provisions and judgments. \sys{} fuses three complementary retrievers---dense semantic search (FAISS), lexical search (BM25) and an entity-based retriever over a legal knowledge graph of 1,024 Acts, 36,180 provisions, 6,596 judgments and 214 curated legal concepts---with Reciprocal Rank Fusion, followed by cross-encoder reranking and citation-constrained generation. We contribute (i) a 1,810-query benchmark spanning four tasks (statute QA on the 2023 criminal codes, fact-pattern to IPC section identification, Constitution QA and case retrieval) with leak-free splits, (ii) a legal-domain fine-tuned bi-encoder trained with dense-mined hard negatives, and (iii) a full ablation of retrievers, fusion weights, chunking and reranking, together with an end-to-end evaluation of answer correctness, faithfulness and citation validity using an independent judge model. Hybrid retrieval improves macro Recall@5 from 0.558 (BM25) to 0.619, the knowledge graph closes vocabulary gaps that neither lexical nor dense retrieval can bridge, and the pipeline runs in under two seconds of retrieval latency on a laptop. Code, data pipeline and indices are released.
+\end{abstract}
+
+\begin{IEEEkeywords}
+legal information retrieval, retrieval-augmented generation, knowledge graphs, hybrid search, Indian law, hallucination
+\end{IEEEkeywords}
+
+\section{Introduction}
+The Indian legal corpus---hundreds of central Acts, the Constitution, the 2023 replacement criminal codes (BNS, BNSS, BSA) and millions of judgments---is digitised but hard to query. Keyword search over India Code or judgment repositories returns documents that share words with a question rather than documents that answer it, while general-purpose LLMs answer confidently from parametric memory that is frequently wrong about section numbers and holdings \cite{magesh2024hallucination}. Retrieval-augmented generation (RAG) is the standard remedy, yet a single retriever is rarely sufficient for law: dense retrievers miss exact citations (``s.~304B''), lexical retrievers miss paraphrase, and neither knows that ``anticipatory bail'' is governed by a provision whose text never uses the word ``anticipatory''.
+
+This paper describes \sys, built from public data end to end, and asks three questions. \textbf{RQ1}: How much does each retriever---dense, lexical, graph---contribute, alone and fused? \textbf{RQ2}: Does light domain adaptation of a small bi-encoder on public Indian legal question--provision pairs improve retrieval, and on which tasks? \textbf{RQ3}: Does grounding measurably improve answer correctness and reduce fabricated citations compared with the same LLM answering closed-book?
+
+Our contributions are: a reproducible corpus and indexing pipeline over 42,776 documents; a legal knowledge graph with a curated concept layer and entity-based retrieval; a four-task, 1,810-query benchmark with documented leakage controls; a fine-tuned legal bi-encoder; and a comprehensive quantitative evaluation including fusion-weight, chunking and latency analyses and LLM-judged faithfulness.
+
+\section{Related Work}
+\textbf{Legal LLM assistants.} ChatLaw \cite{cui2024chatlaw} combines a mixture-of-experts LLM with a multi-agent workflow and knowledge graphs for Chinese law; Legal Assist AI \cite{gupta2024legalassist} fine-tunes LLaMA-3.1-8B on Indian legal data and reports 60.08\% on the All India Bar Examination; LawPal \cite{panchal2025lawpal} and the DoJ chatbot \cite{surya2025doj} are FAISS/LLM RAG systems for Indian law evaluated mainly qualitatively.
+\textbf{Legal retrieval.} Hybrid sparse--dense retrieval with BERT re-ranking is the dominant recipe in legal QA competitions \cite{van2022alqac} and deployed systems \cite{khazaeli2021freeformat}; our work follows this recipe but adds a graph retriever and reports per-component ablations on Indian-law tasks.
+\textbf{Groundedness and hallucination.} Trautmann et al.\ \cite{trautmann2024groundedness} benchmark groundedness detectors for legal QA; Magesh et al.\ \cite{magesh2024hallucination} show that commercial RAG tools still hallucinate 17--33\% of the time. We adopt their framing---measure faithfulness and fabricated citations, not just accuracy---using an independent judge model.
+
+\section{System}
+\subsection{Corpus}
+Table~\ref{tab:corpus} summarises the corpus (details and licences in the repository). Statutes come from a section-wise dump of India Code (1,019 central Acts), the 2023 BNS/BNSS/BSA sections, a merged IPC (444 sections, operative text plus offence/punishment metadata) and 496 Constitution articles parsed from the official text with a footnote- and page-header-aware parser. Case law comprises 589 Supreme Court Reports 2016 judgments with entity annotations, 6,000 High Court fact excerpts and seven landmark judgments. Documents are chunked into $\le$220-word windows with 40-word overlap; each chunk carries Act, section, court, year and title metadata and a header that restates the provision identity.
+
+\subsection{Retrievers}
+\textbf{Dense.} \texttt{bge-small-en-v1.5} (33M parameters) embeddings in an exact inner-product FAISS index (69,149 chunks). \textbf{Lexical.} BM25 ($k_1{=}1.5$, $b{=}0.75$) with a tokenizer that preserves alphanumeric section identifiers such as \emph{498A}. \textbf{Graph.} A directed graph with Act, Section, Case, Topic and Concept nodes and \textsc{has\_section}, \textsc{refers\_to} (25,147 intra-statute cross-references mined by regex), \textsc{cites} (16,735 case$\to$provision edges from judgment annotations), \textsc{about} and \textsc{governed\_by} (448 concept$\to$provision edges from a hand-curated table of 214 legal concepts, including the IPC$\to$BNS transition mapping). At query time, Act aliases, section/article numbers, case names and concept phrases are extracted; matched nodes and their one-hop neighbourhood are scored (1.0 exact, 0.5--0.6 one hop) and mapped to chunks.
+
+\subsection{Fusion, reranking and generation}
+Rankings are fused with Reciprocal Rank Fusion ($k{=}60$); the top 30 fused candidates are rescored by a cross-encoder (\texttt{ms-marco-MiniLM-L-6-v2}) and the top five are passed, numbered, to the generator with a prompt that requires a bracketed citation for every claim and forbids answering beyond the passages. Citations are parsed back and verified against the passage list. Retrieval can be scoped to statutes or case law (a \emph{document-type filter}), which matters for statute-identification questions where near-duplicate judgments would otherwise crowd out provisions.
+
+\subsection{Legal fine-tuning of the bi-encoder}
+We fine-tune the dense encoder with MultipleNegativesRankingLoss on 13,016 (query, provision, hard-negative) triplets: BNS/BNSS/BSA questions, High-Court fact patterns with masked section numbers, and Constitution questions. Hard negatives are the base model's own top non-relevant hit, so training targets precisely its confusions (e.g.\ procedural bail sections for offence fact patterns). To fit an 8~GB laptop we freeze the embeddings and lower six layers (10.8M trainable parameters), batch 16, sequence length 128, one epoch, lr $5{\times}10^{-5}$ with linear warm-up.
+
+\section{Evaluation Benchmark}
+Table~\ref{tab:gold} lists the four tasks. \emph{BNS-QA}: questions about BNS/BNSS/BSA sections, split \emph{by section} so no test section appears in training. \emph{IPC-Facts}: High-Court fact patterns (cause-title boilerplate stripped, section numbers masked) labelled with the IPC sections the judgment applied; split \emph{by case}, and test cases are excluded from the corpus. \emph{Const-QA}: Constitution questions whose article labels are mined from expert reference answers. \emph{SC-Case}: one-paragraph summaries to the judgment they summarise. All metrics are computed at the document (provision/judgment) level after collapsing chunks. We report Recall@$k$, MRR@10 and nDCG@10, macro-averaged over tasks.
+
+\section{Results}
+\subsection{RQ1: retriever ablation}
+\input{../outputs/results/tables/ablation_base.tex}
+\input{../outputs/results/tables/per_task_base.tex}
+\begin{figure}[t]\centering\includegraphics[width=\columnwidth]{ablation_base.png}\caption{Macro retrieval quality for each retriever combination (base embeddings).}\label{fig:ablation}\end{figure}
+\begin{figure}[t]\centering\includegraphics[width=\columnwidth]{per_task_base.png}\caption{Recall@5 per task.}\label{fig:pertask}\end{figure}
+RESULTS\_RQ1
+
+\subsection{Fusion sensitivity}
+\input{../outputs/results/tables/fusion_sweep_base.tex}
+RESULTS\_FUSION
+
+\subsection{RQ2: legal fine-tuning}
+\input{../outputs/results/tables/base_vs_finetuned.tex}
+\begin{figure}[t]\centering\includegraphics[width=\columnwidth]{base_vs_finetuned.png}\caption{Base vs.\ legally fine-tuned bi-encoder (nDCG@10).}\label{fig:ft}\end{figure}
+RESULTS\_RQ2
+
+\subsection{Chunking}
+\input{../outputs/results/tables/chunk_sweep.tex}
+RESULTS\_CHUNK
+
+\subsection{RQ3: answer quality and groundedness}
+\input{../outputs/results/tables/answer_eval.tex}
+\begin{figure}[t]\centering\includegraphics[width=\columnwidth]{answer_eval.png}\caption{Closed-book vs.\ grounded answers.}\label{fig:answer}\end{figure}
+RESULTS\_RQ3
+
+\subsection{Latency}
+\input{../outputs/results/tables/latency_ft.tex}
+RESULTS\_LATENCY
+
+\section{Discussion and Limitations}
+DISCUSSION
+
+\section{Conclusion}
+CONCLUSION
+
+\begin{thebibliography}{9}
+\bibitem{cui2024chatlaw} J.~Cui et al., ``ChatLaw: A multi-agent collaborative legal assistant with knowledge graph enhanced mixture-of-experts large language model,'' arXiv:2306.16092, 2024.
+\bibitem{gupta2024legalassist} J.~Gupta, A.~Sharma, S.~Singhania, and A.~I. Abidi, ``Legal Assist AI: Leveraging transformer based model for effective legal assistance,'' Research Square, 2024.
+\bibitem{panchal2025lawpal} D.~Panchal, A.~Gole, V.~Narute, and R.~Joshi, ``LawPal: A retrieval augmented generation based system for enhanced legal accessibility in India,'' arXiv:2502.16573, 2025.
+\bibitem{trautmann2024groundedness} D.~Trautmann et al., ``Measuring the groundedness of legal question-answering systems,'' in \emph{Proc. NLLP Workshop}, 2024, pp. 176--186.
+\bibitem{van2022alqac} H.~N. Van, D.~Nguyen, P.~M. Nguyen, and M.~L. Nguyen, ``Deep learning approach for legal question answering in ALQAC 2022,'' arXiv:2211.02200, 2022.
+\bibitem{surya2025doj} K.~L. Srujan Surya et al., ``AI-powered interactive legal chatbot for the Department of Justice,'' Milestone Research Publications, 2025.
+\bibitem{khazaeli2021freeformat} S.~Khazaeli et al., ``A free format legal question answering system,'' in \emph{Proc. NLLP Workshop}, 2021, pp. 107--113.
+\bibitem{magesh2024hallucination} V.~Magesh et al., ``Hallucination-free? Assessing the reliability of leading AI legal research tools,'' arXiv:2405.20362, 2024.
+\bibitem{cormack2009rrf} G.~V. Cormack, C.~L.~A. Clarke, and S.~Buettcher, ``Reciprocal rank fusion outperforms Condorcet and individual rank learning methods,'' in \emph{Proc. SIGIR}, 2009.
+\end{thebibliography}
+\end{document}
