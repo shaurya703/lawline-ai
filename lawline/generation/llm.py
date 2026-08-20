@@ -56,7 +56,8 @@ class LLMClient:
         t = time.perf_counter()
         r = self._gemini.models.generate_content(
             model=self.gemini_model, contents=f"{system}\n\n{user}",
-            config={"temperature": self.temperature, "max_output_tokens": self.max_tokens})
+            config={"temperature": self.temperature, "max_output_tokens": self.max_tokens,
+                    "thinking_config": {"thinking_level": "minimal"}})
         return LLMResponse(r.text.strip(), "gemini", self.gemini_model, (time.perf_counter() - t) * 1000,
                            getattr(getattr(r, "usage_metadata", None), "prompt_token_count", None),
                            getattr(getattr(r, "usage_metadata", None), "candidates_token_count", None))

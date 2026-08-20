@@ -4,6 +4,10 @@ from pathlib import Path
 import json
 import numpy as np
 import faiss
+
+# faiss-cpu and torch ship separate OpenMP runtimes; on macOS a multi-threaded faiss search after torch
+# inference segfaults. A single thread is plenty for an exact IndexFlatIP over ~10^5 vectors (~1 ms).
+faiss.omp_set_num_threads(1)
 from .embedder import Embedder
 
 

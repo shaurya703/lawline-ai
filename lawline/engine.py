@@ -42,7 +42,7 @@ class QueryEngine:
             timings["generation"] = resp.latency_ms
         else:
             text = extractive_answer(rr.passages)
-        cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text)})
+        cited = sorted({int(n) for grp in re.findall(r"\[((?:\d+\s*,\s*)*\d+)\]", text) for n in re.split(r"\s*,\s*", grp)})
         citations = [{"n": p.rank, "citation": p.chunk.citation, "chunk_id": p.chunk.chunk_id, "used": p.rank in cited}
                      for p in rr.passages]
         timings["total"] = (time.perf_counter() - t0) * 1000

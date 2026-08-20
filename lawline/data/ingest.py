@@ -132,8 +132,11 @@ def load_sc2016() -> list[Document]:
     for f in sorted(glob.glob(str(DATA_RAW / "Shreyasrao__SC2016/extracted_jsons/*.json"))):
         d = json.load(open(f))
         ent = d.get("entities", {}) or {}
-        title = (ent.get("case_title") or {}).get("title") or Path(f).stem
         text = d.get("raw_text_preview", "").strip()
+        title = (ent.get("case_title") or {}).get("title")
+        if not title:
+            hm = re.match(r"#\s*(.+)", text)
+            title = hm.group(1).strip().title() if hm else Path(f).stem
         summary = (ent.get("summary") or {}).get("summary", "")
         if len(text) < 200:
             continue
@@ -194,7 +197,8 @@ def load_capstone_cases() -> list[Document]:
         text = re.sub(r"[ \t]+", " ", "\n".join(parts)).strip()
         if len(text) < 200:
             continue
-        title = meta.get("case_title") or Path(f).stem.replace("_", " ")
+        stem = re.sub(r"_on_\d+_\w+_\d{4}.*$", "", Path(f).stem).replace("_", " ")
+        title = re.sub(r"\bvs\b", "v.", stem, flags=re.I)
         ym = re.search(r"(\d{4})", meta.get("date", "") or Path(f).stem[-4:])
         docs.append(Document(
             doc_id=f"case::landmark::{slug(title)}", doc_type="case", source="capstone-phase2",

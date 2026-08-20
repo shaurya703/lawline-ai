@@ -1,0 +1,30 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 8746.01it/s]
+Fatal Python error: Segmentation fault
+
+Thread 0xFatal Python error: Segmentation fault
+
+00000001704b7000 (most recent call first):
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 359 in wait
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 655 in wait
+  File "/Users/shauryakesarwani/lawline-ai/.venv/lib/python3.12/site-packages/tqdm/_monitor.py", line 69 in run
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 1075 in _bootstrap_inner
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 1032 in _bootstrap
+
+Thread 0x000000017445b000 (most recent call first):
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 359 in wait
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 655 in wait
+  File "/Users/shauryakesarwani/lawline-ai/.venv/lib/python3.12/site-packages/tqdm/_monitor.py", line 69 in run
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 1075 in _bootstrap_inner
+  File "/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/threading.py", line 1032 in _bootstrap
+Extension modules: 
+
+Thread 0x00000001f4165e80 (most recent call first):
+  File "/Users/shauryakesarwani/lawline-ai/.venv/lib/python3.12/site-packages/faiss/swigfaiss.py", line 2935 in search
+  File "/Users/shauryakesarwani/lawline-ai/.venv/lib/python3.12/site-packages/faiss/class_wrappers.py"numpy._core._multiarray_umath, line 469 in replacement_search
+  File "/Users/shauryakesarwani/lawline-ai/lawline/index/faiss_index.py", line 28 in search
+  File "/Users/shauryakesarwani/lawline-ai/lawline/retrieval/hybrid.py", line 52 in retrieve
+  File "<stdin>", line 5 in <module>
+, numpy.linalg._umath_linalg
+Extension modules: numpy._core._multiarray_umath, numpy.linalg._umath_linalg, torch._C, torch._C, torch._C._dynamo.autograd_compiler, torch._C._dynamo.autograd_compiler, torch._C._dynamo.eval_frame, torch._C._dynamo.eval_frame, torch._C._dynamo.guards, torch._C._dynamo.guards, torch._C._dynamo.utils, , torch._C._ffttorch._C._dynamo.utils, , torch._C._ffttorch._C._linalg, torch._C._linalg, , torch._C._nestedtorch._C._nested, torch._C._nn, torch._C._nn, torch._C._sparse, torch._C._sparse, torch._C._special, torch._C._special/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
