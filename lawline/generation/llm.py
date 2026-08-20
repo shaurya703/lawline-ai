@@ -1,6 +1,6 @@
 """LLM backends: Groq (primary) -> Gemini (fallback) -> extractive fallback (no key / offline)."""
 from __future__ import annotations
-import os, time
+import os, re, time
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from ..config import ROOT, GROQ_MODEL, GEMINI_MODEL
@@ -63,7 +63,7 @@ class LLMClient:
                            getattr(getattr(r, "usage_metadata", None), "prompt_token_count", None),
                            getattr(getattr(r, "usage_metadata", None), "candidates_token_count", None))
 
-    def complete(self, system: str, user: str, retries: int = 2) -> LLMResponse:
+    def complete(self, system: str, user: str, retries: int = 5) -> LLMResponse:
         errors = []
         order = [("groq", self._call_groq, self._groq), ("gemini", self._call_gemini, self._gemini)]
         if self.backend == "gemini":
@@ -82,7 +82,11 @@ class LLMClient:
                     if "401" in msg or "invalid api key" in msg.lower() or "expired" in msg.lower() or "403" in msg:
                         setattr(self, f"_{name}", None)      # disable dead backend for the rest of the session
                         break
-                    time.sleep(1.5 * (attempt + 1))
+                    if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+                        m_ = re.search(r"retry(?:Delay|[ -]in)\D*(\d+)", msg)
+                        time.sleep(min(90, float(m_.group(1)) + 2 if m_ else 15.0 * (attempt + 1)))   # rate limit: back off
+                    else:
+                        time.sleep(1.5 * (attempt + 1))
         raise RuntimeError("All LLM backends failed: " + " | ".join(errors[-3:]))
 
 

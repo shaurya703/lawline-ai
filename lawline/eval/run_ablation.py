@@ -26,7 +26,7 @@ COMBOS = [("bm25",), ("faiss",), ("kg",), ("faiss", "bm25"), ("faiss", "kg"), ("
 RERANK_COMBOS = [("faiss",), ("bm25",), ("faiss", "bm25"), ("faiss", "bm25", "kg")]
 
 
-def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=None, limit=None, no_rerank=False, out_name=None):
+def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=None, limit=None, no_rerank=False, out_name=None, reranker_model: str = RERANKER_MODEL):
     gold = [g for g in load_gold() if not tasks or g["task"] in tasks]
     if limit:
         gold = gold[:limit]
@@ -35,7 +35,7 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
     faiss_idx = FaissIndex.load(INDEX_DIR / f"faiss_{tag}")
     bm25 = BM25Index.load(INDEX_DIR / "bm25")
     kg = LegalKG.load(INDEX_DIR / "kg")
-    rer = None if no_rerank else Reranker(RERANKER_MODEL)
+    rer = None if no_rerank else Reranker(reranker_model)
 
     base = {}                       # qid -> {"faiss": [...], "bm25": [...], "kg": [...]}
     lat = defaultdict(list)
@@ -136,7 +136,7 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
     json.dump({k: {"mean_ms": float(np.mean(v)), "p50_ms": float(np.median(v)), "p95_ms": float(np.percentile(v, 95))} for k, v in lat.items()},
               open(out / "latency.json", "w"), indent=2)
     json.dump({n: r for n, r in runs.items()}, open(out / "runs.json", "w"))
-    json.dump({"tag": tag, "embed_model": embed_model, "reranker": None if no_rerank else RERANKER_MODEL, "top_n": top_n,
+    json.dump({"tag": tag, "embed_model": embed_model, "reranker": None if no_rerank else reranker_model, "top_n": top_n,
                "n_queries": len(gold), "tasks": tasks_present}, open(out / "meta.json", "w"), indent=2)
     return df
 
@@ -145,8 +145,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="base"); ap.add_argument("--embed-model", default=BASE_EMBEDDING_MODEL)
     ap.add_argument("--tasks", nargs="*"); ap.add_argument("--limit", type=int); ap.add_argument("--no-rerank", action="store_true")
-    ap.add_argument("--out-name"); a = ap.parse_args()
-    df = run(a.tag, a.embed_model, tasks=a.tasks, limit=a.limit, no_rerank=a.no_rerank, out_name=a.out_name)
+    ap.add_argument("--out-name"); ap.add_argument("--reranker-model", default=RERANKER_MODEL); a = ap.parse_args()
+    df = run(a.tag, a.embed_model, tasks=a.tasks, limit=a.limit, no_rerank=a.no_rerank, out_name=a.out_name, reranker_model=a.reranker_model)
     pd.set_option("display.width", 200)
     print(df[df.task == "macro"][["config", "R@1", "R@5", "R@10", "MRR@10", "nDCG@10"]].round(3).to_string(index=False))
 

@@ -1,0 +1,26 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 14711.94it/s]
+pairs: 16000  trainable: 7.2M
+  step 1/1000 loss 3.0017 (1s)
+  step 50/1000 loss 0.6819 (38s)
+  step 100/1000 loss 0.2770 (80s)
+  step 150/1000 loss 0.1518 (125s)
+  step 200/1000 loss 0.2886 (167s)
+  step 250/1000 loss 0.2071 (213s)
+  step 300/1000 loss 0.1128 (261s)
+  step 350/1000 loss 0.6238 (310s)
+  step 400/1000 loss 0.0101 (351s)
+  step 450/1000 loss 0.0422 (392s)
+  step 500/1000 loss 0.0119 (432s)
+  step 550/1000 loss 0.0233 (471s)
+  step 600/1000 loss 0.0547 (519s)
+  step 650/1000 loss 0.0887 (573s)
+  step 700/1000 loss 0.1824 (630s)
+  step 750/1000 loss 0.0802 (689s)
+  step 800/1000 loss 0.3183 (739s)
+  step 850/1000 loss 0.1985 (797s)
+  step 900/1000 loss 0.2017 (850s)
+  step 950/1000 loss 0.3179 (897s)
+  step 1000/1000 loss 0.1584 (946s)
+Writing model shards:   0%|          | 0/1 [00:00<?, ?it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  6.80it/s]Writing model shards: 100%|██████████| 1/1 [00:00<00:00,  6.80it/s]
+saved /Users/shauryakesarwani/lawline-ai/outputs/models/lawline-reranker-legal

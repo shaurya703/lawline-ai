@@ -1,0 +1,13 @@
+{
+  "tag": "ft",
+  "embed_model": "outputs/models/lawline-bge-small-legal",
+  "reranker": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+  "top_n": 30,
+  "n_queries": 1810,
+  "tasks": [
+    "bns_qa",
+    "const_qa",
+    "ipc_facts",
+    "sc_case"
+  ]
+}

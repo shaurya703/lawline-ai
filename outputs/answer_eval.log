@@ -1,0 +1,6 @@
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 6893.00it/s]
+/Users/shauryakesarwani/lawline-ai/lawline/index/embedder.py:29: FutureWarning: The `get_sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
+  self.dim = self.model.get_sentence_embedding_dimension()
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 7624.16it/s]
+grounded QA:   0%|          | 0/36 [00:00<?, ?it/s]grounded QA:   3%|▎         | 1/36 [00:45<26:19, 45.12s/it]grounded QA:   6%|▌         | 2/36 [02:01<36:06, 63.71s/it]grounded QA:   8%|▊         | 3/36 [02:45<30:06, 54.76s/it]grounded QA:  11%|█         | 4/36 [07:01<1:11:29, 134.06s/it]

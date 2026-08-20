@@ -28,7 +28,7 @@ context/reference, 1 = minor unsupported detail, 0 = material unsupported or con
 fabricated_citation: true if the answer cites a section/article/case number that is neither in the context nor in the reference."""
 
 
-def _sleep(s=0.35):
+def _sleep(s=4.0):      # free-tier pacing (~10 requests / minute per model)
     time.sleep(s)
 
 
@@ -131,8 +131,12 @@ def main():
     aibe = grounded = None
     if not a.skip_aibe:
         aibe = run_aibe(engine, gen, a.aibe_n, cfg); aibe.to_csv(OUT / "aibe.csv", index=False)
+    elif (OUT / "aibe.csv").exists():
+        aibe = pd.read_csv(OUT / "aibe.csv")
     if not a.skip_grounded:
         grounded = run_grounded(engine, gen, judge, a.bns_n, a.const_n, cfg); grounded.to_csv(OUT / "grounded.csv", index=False)
+    elif (OUT / "grounded.csv").exists():
+        grounded = pd.read_csv(OUT / "grounded.csv")
     s = summarize(aibe, grounded) | {"generator": GEMINI_MODEL, "judge": JUDGE_MODEL, "faiss_tag": a.tag}
     json.dump(s, open(OUT / "summary.json", "w"), indent=2)
     print(json.dumps(s, indent=2))
