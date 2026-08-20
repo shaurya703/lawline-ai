@@ -1,0 +1,8 @@
+services:
+  lawline:
+    build: .
+    ports: ["8000:8000", "8501:8501"]
+    env_file: .env
+    environment:
+      - LAWLINE_FAISS_TAG=${LAWLINE_FAISS_TAG:-ft}
+      - LAWLINE_EMBED_MODEL=${LAWLINE_EMBED_MODEL:-outputs/models/lawline-bge-small-legal}

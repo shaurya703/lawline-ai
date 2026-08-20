@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lawline-ai"
+version = "1.0.0"
+description = "LawLine AI: hybrid retrieval-augmented generation for Indian legal question answering"
+requires-python = ">=3.10"
+dependencies = [
+  "torch", "sentence-transformers>=3.0", "accelerate", "datasets", "faiss-cpu", "rank-bm25", "networkx", "numpy", "pandas", "pyarrow",
+  "scikit-learn", "requests", "tqdm", "fastapi", "uvicorn", "streamlit", "groq", "google-genai",
+  "matplotlib", "pydantic", "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "httpx", "datasets", "huggingface_hub"]
+
+[tool.setuptools.packages.find]
+include = ["lawline*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

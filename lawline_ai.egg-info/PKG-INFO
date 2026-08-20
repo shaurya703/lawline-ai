@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: lawline-ai
+Version: 1.0.0
+Summary: LawLine AI: hybrid retrieval-augmented generation for Indian legal question answering
+Requires-Python: >=3.10
+Requires-Dist: torch
+Requires-Dist: sentence-transformers>=3.0
+Requires-Dist: faiss-cpu
+Requires-Dist: rank-bm25
+Requires-Dist: networkx
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: pyarrow
+Requires-Dist: scikit-learn
+Requires-Dist: requests
+Requires-Dist: tqdm
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: streamlit
+Requires-Dist: groq
+Requires-Dist: google-generativeai
+Requires-Dist: matplotlib
+Requires-Dist: pydantic
+Requires-Dist: python-dotenv
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: httpx; extra == "dev"
+Requires-Dist: datasets; extra == "dev"
+Requires-Dist: huggingface_hub; extra == "dev"

@@ -1,0 +1,18 @@
+{
+  "bns_qa": {
+    "queries": 600,
+    "train_pairs": 5724
+  },
+  "ipc_facts": {
+    "queries": 500,
+    "train_pairs": 12000
+  },
+  "const_qa": {
+    "queries": 124,
+    "train_pairs": 292
+  },
+  "sc_case": {
+    "queries": 586,
+    "train_pairs": 0
+  }
+}
