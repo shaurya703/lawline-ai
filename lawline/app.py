@@ -25,6 +25,7 @@ with st.sidebar:
     use_kg = st.checkbox("Knowledge graph", True)
     use_rer = st.checkbox("Cross-encoder reranker", True)
     final_k = st.slider("Passages to LLM", 1, 10, 5)
+    scope = st.radio("Search scope", ["All sources", "Statutes only", "Case law only"], index=0)
     use_llm = st.checkbox("Generate answer with LLM", True)
     st.divider()
     st.markdown("**Examples**")
@@ -50,7 +51,8 @@ if q:
     with st.chat_message("user"):
         st.markdown(q)
     eng = load_engine()
-    cfg = RetrievalConfig(use_faiss=use_faiss, use_bm25=use_bm25, use_kg=use_kg, use_reranker=use_rer, final_k=final_k)
+    cfg = RetrievalConfig(use_faiss=use_faiss, use_bm25=use_bm25, use_kg=use_kg, use_reranker=use_rer, final_k=final_k,
+                          doc_types={"All sources": (), "Statutes only": ("statute",), "Case law only": ("case",)}[scope])
     if not (use_faiss or use_bm25 or use_kg):
         st.error("Enable at least one retriever."); st.stop()
     with st.chat_message("assistant"):

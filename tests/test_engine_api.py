@@ -56,3 +56,8 @@ def test_api_endpoints(tiny_chunks, monkeypatch):
     assert r.status_code == 422
     r = client.post("/retrieve", json={"question": "murder", "final_k": 2})
     assert r.status_code == 200 and len(r.json()["passages"]) <= 3
+
+
+def test_doc_type_filter_config():
+    cfg = RetrievalConfig(doc_types=("statute",))
+    assert cfg.doc_types == ("statute",) and cfg.name == "faiss+bm25+kg+rerank"

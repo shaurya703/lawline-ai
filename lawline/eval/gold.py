@@ -39,6 +39,17 @@ def build_bns_qa(ids: set[str], test_frac=0.1, max_test=600):
     return gold, pairs
 
 
+HEADER_TAIL = re.compile(r"^.*?CORAM\s*:.*?(?:ORDER|JUDGMENT|JUDGEMENT)\s*\d*\s*(?:Date\s*:)?\s*[\d./-]*\s*-*\s*", re.S | re.I)
+
+
+def strip_hc_header(facts: str) -> str:
+    """Drop the cause-title boilerplate (court, case number, parties, counsel, coram, date) that precedes the facts."""
+    body = facts.rsplit("=====", 1)[-1] if "=====" in facts else facts
+    body = HEADER_TAIL.sub("", body, count=1) if "CORAM" in body.upper() else body
+    body = re.sub(r"^\s*(?:CAV\s+)?(?:ORAL\s+)?(?:ORDER|JUDGMENT)\s*\d*\s*[\d./-]*\s*", "", body, flags=re.I)
+    return body.strip() if len(body.strip()) > 80 else facts
+
+
 def build_ipc_facts(ids: set[str], max_test=500, max_train=12000, max_chars=1800):
     test = pd.read_parquet(DATA_PROCESSED / "hanno_test.parquet")
     train = pd.read_parquet(DATA_PROCESSED / "hanno_train.parquet")
@@ -50,10 +61,10 @@ def build_ipc_facts(ids: set[str], max_test=500, max_train=12000, max_chars=1800
         grp = g.get_group(k)
         rel = sorted({to_doc(s) for s in grp.ipc_section if to_doc(s) in ids})
         if rel:
-            gold.append({"qid": f"ipc_{k}", "task": "ipc_facts", "query": grp.case_facts.iloc[0][:max_chars],
-                         "relevant": rel, "meta": {"n_sections": len(rel)}})
+            gold.append({"qid": f"ipc_{k}", "task": "ipc_facts", "query": strip_hc_header(grp.case_facts.iloc[0])[:max_chars],
+                         "relevant": rel, "meta": {"n_sections": len(rel), "doc_types": ["statute"]}})
     tr = train.drop_duplicates("case_key").sample(frac=1, random_state=SEED).head(max_train)
-    pairs = [{"query": r.case_facts[:max_chars], "pos_doc": to_doc(r.ipc_section)} for r in tr.itertuples() if to_doc(r.ipc_section) in ids]
+    pairs = [{"query": strip_hc_header(r.case_facts)[:max_chars], "pos_doc": to_doc(r.ipc_section)} for r in tr.itertuples() if to_doc(r.ipc_section) in ids]
     return gold, pairs
 
 

@@ -44,20 +44,26 @@ class HybridRetriever:
     def retrieve(self, query: str, cfg: RetrievalConfig | None = None) -> RetrievalResult:
         cfg = cfg or RetrievalConfig()
         rankings, timings = {}, {}
+        types = set(cfg.doc_types)
+        over = 8 if types else 1                      # over-fetch when post-filtering by document type
+        def keep(ranked):
+            if not types:
+                return ranked[:cfg.top_k_each]
+            return [(c, s) for c, s in ranked if c in self.by_id and self.by_id[c].doc_type in types][:cfg.top_k_each]
         if cfg.use_faiss:
             t = time.perf_counter()
             qv = self.embedder.encode_queries([query])
             timings["embed"] = (time.perf_counter() - t) * 1000
             t = time.perf_counter()
-            rankings["faiss"] = self.faiss.search(qv, cfg.top_k_each)[0]
+            rankings["faiss"] = keep(self.faiss.search(qv, cfg.top_k_each * over)[0])
             timings["faiss"] = (time.perf_counter() - t) * 1000
         if cfg.use_bm25:
             t = time.perf_counter()
-            rankings["bm25"] = self.bm25.search(query, cfg.top_k_each)
+            rankings["bm25"] = keep(self.bm25.search(query, cfg.top_k_each * over))
             timings["bm25"] = (time.perf_counter() - t) * 1000
         if cfg.use_kg:
             t = time.perf_counter()
-            rankings["kg"] = self.kg.retrieve(query, cfg.top_k_each)
+            rankings["kg"] = keep(self.kg.retrieve(query, cfg.top_k_each * over))
             timings["kg"] = (time.perf_counter() - t) * 1000
         t = time.perf_counter()
         weights = dict(cfg.weights)
