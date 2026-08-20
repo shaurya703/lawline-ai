@@ -56,7 +56,8 @@ class Chunk:
     def citation(self) -> str:
         """Human readable citation string used in answers."""
         if self.doc_type == "statute":
-            return f"Section {self.section}, {self.act}"
+            unit = "Article" if (self.act or "").startswith("Constitution") else "Section"
+            return f"{unit} {self.section}, {self.act}"
         bits = [self.title]
         if self.court:
             bits.append(self.court)
