@@ -8,7 +8,6 @@ import faiss
 
 # faiss-cpu and torch ship separate OpenMP runtimes; on macOS a multi-threaded faiss search after torch
 # inference segfaults. A single thread is plenty for an exact IndexFlatIP over ~10^5 vectors (~1 ms).
-faiss.omp_set_num_threads(1)
 from .embedder import Embedder
 
 
@@ -21,12 +20,14 @@ class FaissIndex:
     def build(cls, chunk_ids: list[str], embeddings: np.ndarray) -> "FaissIndex":
         if len(chunk_ids) != embeddings.shape[0]:
             raise ValueError("ids / embeddings length mismatch")
+        faiss.omp_set_num_threads(1)
         idx = cls(embeddings.shape[1])
         idx.index.add(np.ascontiguousarray(embeddings, dtype="float32"))
         idx.ids = list(chunk_ids)
         return idx
 
     def search(self, query_vecs: np.ndarray, k: int = 10) -> list[list[tuple[str, float]]]:
+        faiss.omp_set_num_threads(1)
         q = np.ascontiguousarray(query_vecs, dtype="float32")
         if q.ndim == 1:
             q = q[None, :]

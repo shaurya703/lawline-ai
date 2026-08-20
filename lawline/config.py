@@ -31,7 +31,8 @@ CHUNK_OVERLAP = int(os.environ.get("LAWLINE_CHUNK_OVERLAP", 40))
 TOP_K_EACH = 30       # candidates from each retriever
 RRF_K = 60
 FINAL_K = 5           # passages handed to the LLM
-RETRIEVER_WEIGHTS = {"faiss": 1.0, "bm25": 1.0, "kg": 0.7}
+RETRIEVER_WEIGHTS = {"faiss": 1.0, "bm25": 1.0, "kg": 1.0}
+KG_CONFIDENT_BOOST = 2.0   # extra RRF weight when the KG hit is an exact section/article/concept match (score >= 0.9)
 
 # LLM
 GROQ_MODEL = os.environ.get("LAWLINE_GROQ_MODEL", "llama-3.1-8b-instant")
@@ -49,6 +50,7 @@ class RetrievalConfig:
     final_k: int = FINAL_K
     rrf_k: int = RRF_K
     weights: dict = field(default_factory=lambda: dict(RETRIEVER_WEIGHTS))
+    kg_confident_boost: float = KG_CONFIDENT_BOOST
 
     @property
     def name(self) -> str:

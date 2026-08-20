@@ -116,10 +116,11 @@ class LegalKG:
                 src = f"case:{d.doc_id}"
                 for cited in d.cited_cases:
                     cw = set(_norm_title(cited))
-                    if len(cw) < 2:
+                    if len(cw) < 2 or len(cw) > 8:
                         continue
                     for tw, node in norm:
-                        if node != src and len(cw & tw) >= max(2, int(0.6 * len(tw))):
+                        ov = len(cw & tw)
+                        if node != src and ov >= 3 and (ov == len(tw) or ov == len(cw)):
                             kg.g.add_edge(src, node, rel="CITES_CASE")
         for act, al in ALIASES.items():
             if act in acts:

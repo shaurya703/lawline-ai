@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from ..config import INDEX_DIR, RESULTS_DIR, BASE_EMBEDDING_MODEL, RERANKER_MODEL, RRF_K, RETRIEVER_WEIGHTS
+from ..config import INDEX_DIR, RESULTS_DIR, BASE_EMBEDDING_MODEL, RERANKER_MODEL, RRF_K, RETRIEVER_WEIGHTS, KG_CONFIDENT_BOOST
 from ..data.chunking import load_chunks
 from ..index.embedder import Embedder
 from ..index.faiss_index import FaissIndex
@@ -51,22 +51,38 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
     for q in queries[:50]:
         t = time.perf_counter(); emb.encode_queries([q]); lat["embed_single"].append((time.perf_counter() - t) * 1000)
 
+    def fuse(qid, combo, boost=KG_CONFIDENT_BOOST, weights=RETRIEVER_WEIGHTS):
+        sub = {k: base[qid][k] for k in combo}
+        if len(sub) == 1:
+            return sub[combo[0]]
+        w = dict(weights)
+        if sub.get("kg") and sub["kg"][0][1] >= 0.9:
+            w["kg"] = w.get("kg", 1.0) * boost
+        return rrf(sub, k=RRF_K, weights=w)
+
     runs: dict[str, dict[str, list[str]]] = {}
     for combo in COMBOS:
         name = "+".join(combo)
+        runs[name] = {g["qid"]: dedupe_docs([c for c, _ in fuse(g["qid"], combo)])[:10] for g in gold}
+    # fusion-weight sensitivity (full hybrid, no reranker)
+    for kgw, boost in ((0.5, 1.0), (1.0, 1.0), (1.0, 2.0), (1.0, 3.0), (2.0, 1.0)):
+        name = f"faiss+bm25+kg[w_kg={kgw},boost={boost}]"
+        runs[name] = {g["qid"]: dedupe_docs([c for c, _ in fuse(g["qid"], ("faiss", "bm25", "kg"), boost, {"faiss": 1, "bm25": 1, "kg": kgw})])[:10] for g in gold}
+    for rk in (20, 100):
+        name = f"faiss+bm25+kg[rrf_k={rk}]"
         runs[name] = {}
         for g in gold:
-            sub = {k: base[g["qid"]][k] for k in combo}
-            fused = rrf(sub, k=RRF_K, weights=RETRIEVER_WEIGHTS) if len(sub) > 1 else sub[combo[0]]
-            runs[name][g["qid"]] = dedupe_docs([c for c, _ in fused])[:10]
+            sub = {k: base[g["qid"]][k] for k in ("faiss", "bm25", "kg")}
+            w = dict(RETRIEVER_WEIGHTS)
+            if sub["kg"] and sub["kg"][0][1] >= 0.9: w["kg"] *= KG_CONFIDENT_BOOST
+            runs[name][g["qid"]] = dedupe_docs([c for c, _ in rrf(sub, k=rk, weights=w)])[:10]
     if rer:
         cache: dict[tuple, float] = {}
         for combo in RERANK_COMBOS:
             name = "+".join(combo) + "+rerank"
             runs[name] = {}
             for g in tqdm(gold, desc=f"rerank {name}"):
-                sub = {k: base[g["qid"]][k] for k in combo}
-                fused = rrf(sub, k=RRF_K, weights=RETRIEVER_WEIGHTS) if len(sub) > 1 else sub[combo[0]]
+                fused = fuse(g["qid"], combo)
                 cands = [c for c, _ in fused[:rerank_n] if c in by_id]
                 todo = [c for c in cands if (g["qid"], c) not in cache]
                 if todo:

@@ -60,7 +60,10 @@ class HybridRetriever:
             rankings["kg"] = self.kg.retrieve(query, cfg.top_k_each)
             timings["kg"] = (time.perf_counter() - t) * 1000
         t = time.perf_counter()
-        fused = rrf(rankings, k=cfg.rrf_k, weights=cfg.weights) if len(rankings) > 1 else \
+        weights = dict(cfg.weights)
+        if rankings.get("kg") and rankings["kg"][0][1] >= 0.9:
+            weights["kg"] = weights.get("kg", 1.0) * cfg.kg_confident_boost
+        fused = rrf(rankings, k=cfg.rrf_k, weights=weights) if len(rankings) > 1 else \
             [(d, s) for d, s in next(iter(rankings.values()), [])]
         timings["fusion"] = (time.perf_counter() - t) * 1000
         src = {}
