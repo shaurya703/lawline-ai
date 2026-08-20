@@ -40,13 +40,24 @@ class HybridRetriever:
         self.bm25 = BM25Index.load(index_dir / "bm25")
         self.kg = LegalKG.load(index_dir / "kg")
         self.reranker = get_reranker() if load_reranker else None
+        self._type_masks: dict[tuple, tuple] = {}
+
+    def type_masks(self, types: tuple):
+        """(bm25 boolean mask, faiss allowed-id array) for a document-type restriction; cached."""
+        if types not in self._type_masks:
+            import numpy as np
+            tset = set(types)
+            bm = np.array([self.by_id[c].doc_type in tset if c in self.by_id else False for c in self.bm25.ids])
+            fa = np.array([i for i, c in enumerate(self.faiss.ids) if c in self.by_id and self.by_id[c].doc_type in tset], dtype="int64")
+            self._type_masks[types] = (bm, fa)
+        return self._type_masks[types]
 
     def retrieve(self, query: str, cfg: RetrievalConfig | None = None) -> RetrievalResult:
         cfg = cfg or RetrievalConfig()
         rankings, timings = {}, {}
-        types = set(cfg.doc_types)
-        over = 8 if types else 1                      # over-fetch when post-filtering by document type
-        def keep(ranked):
+        types = tuple(cfg.doc_types)
+        bm_mask, fa_allowed = self.type_masks(types) if types else (None, None)
+        def keep(ranked):                               # KG results are filtered after the fact (cheap, small)
             if not types:
                 return ranked[:cfg.top_k_each]
             return [(c, s) for c, s in ranked if c in self.by_id and self.by_id[c].doc_type in types][:cfg.top_k_each]
@@ -55,15 +66,15 @@ class HybridRetriever:
             qv = self.embedder.encode_queries([query])
             timings["embed"] = (time.perf_counter() - t) * 1000
             t = time.perf_counter()
-            rankings["faiss"] = keep(self.faiss.search(qv, cfg.top_k_each * over)[0])
+            rankings["faiss"] = self.faiss.search(qv, cfg.top_k_each, allowed=fa_allowed)[0]
             timings["faiss"] = (time.perf_counter() - t) * 1000
         if cfg.use_bm25:
             t = time.perf_counter()
-            rankings["bm25"] = keep(self.bm25.search(query, cfg.top_k_each * over))
+            rankings["bm25"] = self.bm25.search(query, cfg.top_k_each, mask=bm_mask)
             timings["bm25"] = (time.perf_counter() - t) * 1000
         if cfg.use_kg:
             t = time.perf_counter()
-            rankings["kg"] = keep(self.kg.retrieve(query, cfg.top_k_each * over))
+            rankings["kg"] = keep(self.kg.retrieve(query, cfg.top_k_each * (8 if types else 1)))
             timings["kg"] = (time.perf_counter() - t) * 1000
         t = time.perf_counter()
         weights = dict(cfg.weights)

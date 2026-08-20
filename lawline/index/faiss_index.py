@@ -26,12 +26,17 @@ class FaissIndex:
         idx.ids = list(chunk_ids)
         return idx
 
-    def search(self, query_vecs: np.ndarray, k: int = 10) -> list[list[tuple[str, float]]]:
+    def search(self, query_vecs: np.ndarray, k: int = 10, allowed: np.ndarray | None = None) -> list[list[tuple[str, float]]]:
+        """allowed: optional int64 array of internal ids to restrict the (exact) search to."""
         faiss.omp_set_num_threads(1)
         q = np.ascontiguousarray(query_vecs, dtype="float32")
         if q.ndim == 1:
             q = q[None, :]
-        scores, idxs = self.index.search(q, min(k, len(self.ids)))
+        if allowed is not None:
+            params = faiss.SearchParameters(sel=faiss.IDSelectorBatch(np.asarray(allowed, dtype="int64")))
+            scores, idxs = self.index.search(q, min(k, len(allowed)), params=params)
+        else:
+            scores, idxs = self.index.search(q, min(k, len(self.ids)))
         return [[(self.ids[j], float(s)) for j, s in zip(row_i, row_s) if j >= 0] for row_i, row_s in zip(idxs, scores)]
 
     def save(self, path: Path):

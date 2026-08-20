@@ -1,0 +1,7 @@
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 8787.35it/s]
+/Users/shauryakesarwani/lawline-ai/lawline/index/embedder.py:29: FutureWarning: The `get_sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
+  self.dim = self.model.get_sentence_embedding_dimension()
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 8515.12it/s]
+base retrieval:   0%|          | 0/1810 [00:00<?, ?it/s]base retrieval:   3%|▎         | 46/1810 [00:00<00:03, 452.81it/s]base retrieval:   5%|▌         | 96/1810 [00:00<00:03, 475.33it/s]base retrieval:   8%|▊         | 146/1810 [00:00<00:03, 482.91it/s]base retrieval:  11%|█         | 196/1810 [00:00<00:03, 485.99it/s]base retrieval:  14%|█▎        | 245/1810 [00:00<00:04, 320.80it/s]base retrieval:  16%|█▌        | 289/1810 [00:00<00:04, 349.11it/s]base retrieval:  18%|█▊        | 334/1810 [00:00<00:03, 373.60it/s]base retrieval:  21%|██        | 378/1810 [00:00<00:03, 391.38it/s]/opt/homebrew/Cellar/python@3.12/3.12.7_1/Frameworks/Python.framework/Versions/3.12/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

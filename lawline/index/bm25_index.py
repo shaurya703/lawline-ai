@@ -26,8 +26,11 @@ class BM25Index:
     def build(cls, ids: list[str], texts: list[str]) -> "BM25Index":
         return cls(list(ids), BM25Okapi([tokenize(t) for t in texts], k1=1.5, b=0.75))
 
-    def search(self, query: str, k: int = 10) -> list[tuple[str, float]]:
+    def search(self, query: str, k: int = 10, mask: np.ndarray | None = None) -> list[tuple[str, float]]:
+        """mask: optional boolean array over ids; documents with mask==False are excluded before ranking."""
         scores = self.bm25.get_scores(tokenize(query))
+        if mask is not None:
+            scores = np.where(mask, scores, -1.0)
         if k >= len(scores):
             top = np.argsort(-scores)
         else:

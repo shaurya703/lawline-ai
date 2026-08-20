@@ -53,3 +53,16 @@ def test_kg_build_and_retrieve(tiny_corpus_path, tiny_chunks):
     assert kg.retrieve("is cheating punishable?")[0][0].startswith("statute::indian-penal-code-1860::4")
     # section 420 expansion reaches 415 via REFERS_TO
     assert any(k.startswith("statute::indian-penal-code-1860::415") for k, _ in kg.retrieve("section 420 IPC"))
+
+
+def test_filtered_search(tiny_chunks):
+    import numpy as np
+    idx = BM25Index.build([c.chunk_id for c in tiny_chunks], [c.text for c in tiny_chunks])
+    mask = np.array([c.doc_type == "case" for c in tiny_chunks])
+    hits = idx.search("procedure under Article 21 murder", k=5, mask=mask)
+    assert hits and all(h[0].startswith("case::") for h in hits)
+    rng = np.random.default_rng(1)
+    vecs = rng.normal(size=(20, 8)).astype("float32"); vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
+    fi = FaissIndex.build([f"d{i}#c0" for i in range(20)], vecs)
+    hits = fi.search(vecs[3], k=3, allowed=np.array([5, 6, 7]))[0]
+    assert {h[0] for h in hits} <= {"d5#c0", "d6#c0", "d7#c0"} and len(hits) == 3

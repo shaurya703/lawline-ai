@@ -125,6 +125,10 @@ def main():
                 hist.append({"step": step, "loss": float(loss.item()), "lr": sched.get_last_lr()[0]})
                 print(f"  step {step}/{total} loss {loss.item():.4f} ({time.perf_counter() - t:.0f}s)", flush=True)
     model.eval(); model.save(a.out)
+    json.dump({"base": a.base, "examples": n, "epochs": a.epochs, "batch": a.batch, "lr": a.lr, "seq_len": a.seq_len,
+               "hard_negatives": not a.no_hard_neg, "train_seconds": time.perf_counter() - t, "device": str(device),
+               "steps": total, "freeze_layers": a.freeze_layers, "trainable_params_M": sum(p_.numel() for p_ in trainable) / 1e6,
+               "loss_history": hist}, open(Path(a.out) / "train_meta.json", "w"), indent=2)
     print("saved", a.out, f"{time.perf_counter() - t:.0f}s")
 
 

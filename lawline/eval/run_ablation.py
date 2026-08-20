@@ -42,25 +42,32 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
     queries = [g["query"] for g in gold]
     # BM25 / KG rankings are independent of the embedding model -> cache them across runs
     types_of = {g["qid"]: tuple(g.get("meta", {}).get("doc_types", ())) for g in gold}
+    masks = {}
+    for ty in {t for t in types_of.values() if t}:
+        masks[ty] = (np.array([by_id[c].doc_type in ty if c in by_id else False for c in bm25.ids]),
+                     np.array([i for i, c in enumerate(faiss_idx.ids) if c in by_id and by_id[c].doc_type in ty], dtype="int64"))
     def keep(qid, ranked):
         ty = types_of[qid]
         if not ty:
             return ranked[:top_n]
         return [(c, s) for c, s in ranked if c in by_id and by_id[c].doc_type in ty][:top_n]
+    def ckey(qid):                                    # cache key carries the filter so filtered queries are versioned
+        return qid if not types_of[qid] else f"{qid}|{'+'.join(types_of[qid])}|exact"
     cache_p = RESULTS_DIR / f"cache_bm25_kg_top{top_n}_v2.json"
     cached = json.load(open(cache_p)) if cache_p.exists() else {"bm25": {}, "kg": {}, "lat": {"bm25": [], "kg": []}}
     t = time.perf_counter(); qvecs = emb.encode_queries(queries); lat["embed_batch_total_ms"].append((time.perf_counter() - t) * 1000)
     dirty = False
     for g, qv in tqdm(list(zip(gold, qvecs)), desc="base retrieval"):
         r = {}
-        over = 8 if types_of[g["qid"]] else 1
-        t = time.perf_counter(); r["faiss"] = keep(g["qid"], faiss_idx.search(qv, top_n * over)[0]); lat["faiss"].append((time.perf_counter() - t) * 1000)
-        if g["qid"] in cached["bm25"]:
-            r["bm25"] = [tuple(x) for x in cached["bm25"][g["qid"]]]; r["kg"] = [tuple(x) for x in cached["kg"][g["qid"]]]
+        ty = types_of[g["qid"]]; bm_mask, fa_allowed = masks.get(ty, (None, None))
+        t = time.perf_counter(); r["faiss"] = faiss_idx.search(qv, top_n, allowed=fa_allowed)[0]; lat["faiss"].append((time.perf_counter() - t) * 1000)
+        key = ckey(g["qid"])
+        if key in cached["bm25"]:
+            r["bm25"] = [tuple(x) for x in cached["bm25"][key]]; r["kg"] = [tuple(x) for x in cached["kg"][key]]
         else:
-            t = time.perf_counter(); r["bm25"] = keep(g["qid"], bm25.search(g["query"], top_n * over)); cached["lat"]["bm25"].append((time.perf_counter() - t) * 1000)
-            t = time.perf_counter(); r["kg"] = keep(g["qid"], kg.retrieve(g["query"], top_n * over)); cached["lat"]["kg"].append((time.perf_counter() - t) * 1000)
-            cached["bm25"][g["qid"]] = r["bm25"]; cached["kg"][g["qid"]] = r["kg"]; dirty = True
+            t = time.perf_counter(); r["bm25"] = bm25.search(g["query"], top_n, mask=bm_mask); cached["lat"]["bm25"].append((time.perf_counter() - t) * 1000)
+            t = time.perf_counter(); r["kg"] = keep(g["qid"], kg.retrieve(g["query"], top_n * (8 if ty else 1))); cached["lat"]["kg"].append((time.perf_counter() - t) * 1000)
+            cached["bm25"][key] = r["bm25"]; cached["kg"][key] = r["kg"]; dirty = True
         base[g["qid"]] = r
     if dirty:
         json.dump(cached, open(cache_p, "w"))
