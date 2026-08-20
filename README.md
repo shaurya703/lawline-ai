@@ -38,4 +38,20 @@ LAWLINE_FAISS_TAG=ft LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal 
 ```
 Docker: `docker compose up --build` (serves API on :8000 and UI on :8501).
 
+## Results (see `docs/REPORT_PHASE3_CHAPTERS.md`, `paper/`, `outputs/results/tables`, `outputs/figures`)
+
+Benchmark: 1,810 held-out queries, four tasks (BNS-QA, IPC fact-pattern→section, Constitution-QA, SC case retrieval), document-level metrics, macro-averaged.
+
+| System | R@1 | R@5 | nDCG@10 |
+|---|---|---|---|
+| BM25 | 0.449 | 0.559 | 0.525 |
+| Dense (bge-small, off the shelf) | 0.431 | 0.541 | 0.503 |
+| Hybrid FAISS+BM25+KG → RRF → cross-encoder (base encoder) | 0.515 | 0.625 | 0.586 |
+| Dense, legally fine-tuned (ours) | 0.526 | 0.709 | 0.664 |
+| **LawLine (fine-tuned + hybrid + routing)** | **0.563** | **0.725** | **0.685** |
+
+Fine-tuning lifts IPC fact-pattern→section retrieval from 0.00 to 0.325 R@5 and BNS-QA from 0.41 to 0.68 on unseen sections.
+Grounding raises AIBE accuracy from 64.7 % to 68.0 % (n = 150) and judged faithfulness to 2.0/2 with 75 % of answers citing the gold provision.
+Retrieval latency on a laptop: embed 13 ms · FAISS 2 ms · KG 68 ms · reranker ≈ 0.3 s · BM25 0.2–0.3 s (questions).
+
 Disclaimer: LawLine AI provides legal *information* grounded in retrieved sources; it is not legal advice.

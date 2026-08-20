@@ -1,0 +1,28 @@
+{
+  "aibe": {
+    "n": 150,
+    "closed_book_acc": 0.6466666666666666,
+    "rag_acc": 0.68
+  },
+  "closed": {
+    "correctness_mean(0-2)": 1.4583333333333333,
+    "faithfulness_mean(0-2)": 1.5416666666666667,
+    "fully_correct_rate": 0.5416666666666666,
+    "fabricated_citation_rate": 0.0
+  },
+  "rag": {
+    "correctness_mean(0-2)": 1.5416666666666667,
+    "faithfulness_mean(0-2)": 2.0,
+    "fully_correct_rate": 0.6666666666666666,
+    "fabricated_citation_rate": 0.0,
+    "retrieval_hit_rate": 0.7916666666666666,
+    "gold_cited_rate": 0.75,
+    "mean_citations_per_answer": 1.9583333333333333,
+    "n": 24,
+    "mean_generation_ms": 2509.3274478373737,
+    "mean_retrieval_ms": 2975.5066075595096
+  },
+  "generator": "gemini-3.5-flash-lite",
+  "judge": "gemini-3.1-flash-lite",
+  "faiss_tag": "ft"
+}

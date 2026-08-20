@@ -1,6 +1,34 @@
-Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 6893.00it/s]
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|██████████| 199/199 [00:00<00:00, 6467.58it/s]
 /Users/shauryakesarwani/lawline-ai/lawline/index/embedder.py:29: FutureWarning: The `get_sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
   self.dim = self.model.get_sentence_embedding_dimension()
 Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 7624.16it/s]
-grounded QA:   0%|          | 0/36 [00:00<?, ?it/s]grounded QA:   3%|▎         | 1/36 [00:45<26:19, 45.12s/it]grounded QA:   6%|▌         | 2/36 [02:01<36:06, 63.71s/it]grounded QA:   8%|▊         | 3/36 [02:45<30:06, 54.76s/it]grounded QA:  11%|█         | 4/36 [07:01<1:11:29, 134.06s/it]
+Loading weights:   0%|          | 0/105 [00:00<?, ?it/s]Loading weights: 100%|██████████| 105/105 [00:00<00:00, 3019.04it/s]
+grounded QA:   0%|          | 0/30 [00:00<?, ?it/s]grounded QA:   3%|▎         | 1/30 [00:21<10:36, 21.94s/it]grounded QA:   7%|▋         | 2/30 [00:40<09:25, 20.21s/it]grounded QA:  10%|█         | 3/30 [01:00<08:54, 19.79s/it]grounded QA:  13%|█▎        | 4/30 [01:23<09:10, 21.16s/it]grounded QA:  17%|█▋        | 5/30 [01:42<08:28, 20.33s/it]grounded QA:  20%|██        | 6/30 [02:05<08:27, 21.14s/it]grounded QA:  23%|██▎       | 7/30 [02:42<10:10, 26.52s/it]grounded QA:  27%|██▋       | 8/30 [03:07<09:34, 26.12s/it]grounded QA:  30%|███       | 9/30 [03:30<08:45, 25.02s/it]grounded QA:  33%|███▎      | 10/30 [04:15<10:21, 31.05s/it]grounded QA:  37%|███▋      | 11/30 [04:34<08:43, 27.53s/it]grounded QA:  40%|████      | 12/30 [05:00<08:08, 27.13s/it]grounded QA:  43%|████▎     | 13/30 [05:20<07:05, 25.01s/it]grounded QA:  47%|████▋     | 14/30 [05:48<06:50, 25.68s/it]grounded QA:  50%|█████     | 15/30 [06:12<06:18, 25.26s/it]grounded QA:  53%|█████▎    | 16/30 [06:34<05:39, 24.26s/it]grounded QA:  57%|█████▋    | 17/30 [06:57<05:12, 24.02s/it]grounded QA:  60%|██████    | 18/30 [07:38<05:49, 29.15s/it]grounded QA:  63%|██████▎   | 19/30 [08:19<05:58, 32.60s/it]grounded QA:  67%|██████▋   | 20/30 [08:55<05:37, 33.71s/it]grounded QA:  70%|███████   | 21/30 [09:16<04:27, 29.77s/it]grounded QA:  73%|███████▎  | 22/30 [10:00<04:32, 34.06s/it]grounded QA:  77%|███████▋  | 23/30 [10:20<03:28, 29.78s/it]grounded QA:  80%|████████  | 24/30 [10:42<02:45, 27.58s/it]grounded QA:  83%|████████▎ | 25/30 [15:55<09:25, 113.02s/it]grounded QA:  87%|████████▋ | 26/30 [21:55<12:28, 187.15s/it]grounded QA:  90%|█████████ | 27/30 [29:55<13:45, 275.13s/it]grounded QA:  93%|█████████▎| 28/30 [35:55<10:00, 300.43s/it]grounded QA:  97%|█████████▋| 29/30 [37:05<03:51, 231.47s/it]grounded QA: 100%|██████████| 30/30 [43:55<00:00, 284.86s/it]grounded QA: 100%|██████████| 30/30 [43:55<00:00, 87.84s/it] 
+{
+  "aibe": {
+    "n": 150,
+    "closed_book_acc": 0.6466666666666666,
+    "rag_acc": 0.68
+  },
+  "closed": {
+    "correctness_mean(0-2)": 1.4583333333333333,
+    "faithfulness_mean(0-2)": 1.5416666666666667,
+    "fully_correct_rate": 0.5416666666666666,
+    "fabricated_citation_rate": 0.0
+  },
+  "rag": {
+    "correctness_mean(0-2)": 1.5416666666666667,
+    "faithfulness_mean(0-2)": 2.0,
+    "fully_correct_rate": 0.6666666666666666,
+    "fabricated_citation_rate": 0.0,
+    "retrieval_hit_rate": 0.7916666666666666,
+    "gold_cited_rate": 0.75,
+    "mean_citations_per_answer": 1.9583333333333333,
+    "n": 24,
+    "mean_generation_ms": 2509.3274478373737,
+    "mean_retrieval_ms": 2975.5066075595096
+  },
+  "generator": "gemini-3.5-flash-lite",
+  "judge": "gemini-3.1-flash-lite",
+  "faiss_tag": "ft"
+}

@@ -31,6 +31,8 @@ CHUNK_OVERLAP = int(os.environ.get("LAWLINE_CHUNK_OVERLAP", 40))
 TOP_K_EACH = 30       # candidates from each retriever
 RRF_K = 60
 FINAL_K = 5           # passages handed to the LLM
+ROUTE_WORDS = 100     # queries longer than this are treated as narrative fact patterns
+SHORT_QUERY_WORDS = 40  # short questions: an exact KG hit (section/article/concept) is guaranteed a slot in the final list
 RETRIEVER_WEIGHTS = {"faiss": 1.0, "bm25": 1.0, "kg": 1.0}
 KG_CONFIDENT_BOOST = 1.0   # extra RRF weight for exact KG hits; ablation (fusion sweep) showed >1 hurts R@1, so disabled
 
@@ -52,6 +54,8 @@ class RetrievalConfig:
     weights: dict = field(default_factory=lambda: dict(RETRIEVER_WEIGHTS))
     kg_confident_boost: float = KG_CONFIDENT_BOOST
     doc_types: tuple = ()          # e.g. ("statute",) to restrict retrieval to provisions; empty = all
+    auto_route: bool = True        # narrative queries (> ROUTE_WORDS words) -> fine-tuned dense retriever only (see ablation)
+    kg_guarantee_slot: bool = True # short questions: append the top exact KG hit if fusion/reranking dropped it (benchmark-neutral)
 
     @property
     def name(self) -> str:

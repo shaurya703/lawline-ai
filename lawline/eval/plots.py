@@ -9,8 +9,10 @@ import matplotlib.pyplot as plt
 from ..config import RESULTS_DIR, FIG_DIR
 
 plt.rcParams.update({"font.size": 9, "axes.spines.top": False, "axes.spines.right": False, "figure.dpi": 160})
+ROUTED = "routed: dense (narrative) | faiss+bm25+kg+rerank (question)"
 ORDER = ["bm25", "faiss", "kg", "faiss+bm25", "faiss+kg", "bm25+kg", "faiss+bm25+kg", "faiss+rerank", "bm25+rerank",
-         "faiss+bm25+rerank", "faiss+bm25+kg+rerank"]
+         "faiss+bm25+rerank", "faiss+bm25+kg+rerank", ROUTED]
+SHORT = {ROUTED: "LawLine\n(routed)"}
 TASK_LABEL = {"bns_qa": "BNS-QA", "ipc_facts": "IPC facts→section", "const_qa": "Constitution-QA", "sc_case": "SC case retrieval", "macro": "Macro avg"}
 
 
@@ -27,7 +29,7 @@ def fig_ablation(tag="base"):
     x = range(len(m)); w = 0.27
     for i, (col, lab) in enumerate((("R@1", "Recall@1"), ("R@5", "Recall@5"), ("nDCG@10", "nDCG@10"))):
         ax.bar([xi + (i - 1) * w for xi in x], m[col], w, label=lab)
-    ax.set_xticks(list(x)); ax.set_xticklabels(m.index, rotation=35, ha="right"); ax.set_ylim(0, 1); ax.set_ylabel("score (macro over 4 tasks)")
+    ax.set_xticks(list(x)); ax.set_xticklabels([SHORT.get(c, c) for c in m.index], rotation=35, ha="right"); ax.set_ylim(0, 1); ax.set_ylabel("score (macro over 4 tasks)")
     ax.legend(frameon=False, ncol=3); ax.set_title(f"Retrieval ablation ({tag} embeddings)")
     fig.tight_layout(); fig.savefig(FIG_DIR / f"ablation_{tag}.png"); plt.close(fig)
 
@@ -36,11 +38,11 @@ def fig_per_task(tag="base"):
     df = _load(tag)
     if df is None: return
     tasks = [t for t in ("bns_qa", "ipc_facts", "const_qa", "sc_case") if t in set(df.task)]
-    cfgs = [c for c in ("bm25", "faiss", "kg", "faiss+bm25+kg", "faiss+bm25+kg+rerank") if c in set(df.config)]
+    cfgs = [c for c in ("bm25", "faiss", "kg", "faiss+bm25+kg", "faiss+bm25+kg+rerank", ROUTED) if c in set(df.config)]
     fig, ax = plt.subplots(figsize=(7.2, 3.0)); w = 0.8 / len(cfgs)
     for i, c in enumerate(cfgs):
         vals = [df[(df.task == t) & (df.config == c)]["R@5"].iloc[0] for t in tasks]
-        ax.bar([j + (i - len(cfgs) / 2 + 0.5) * w for j in range(len(tasks))], vals, w, label=c)
+        ax.bar([j + (i - len(cfgs) / 2 + 0.5) * w for j in range(len(tasks))], vals, w, label=SHORT.get(c, c).replace("\n", " "))
     ax.set_xticks(range(len(tasks))); ax.set_xticklabels([TASK_LABEL[t] for t in tasks]); ax.set_ylim(0, 1); ax.set_ylabel("Recall@5")
     ax.legend(frameon=False, ncol=3, fontsize=7); ax.set_title("Recall@5 per task")
     fig.tight_layout(); fig.savefig(FIG_DIR / f"per_task_{tag}.png"); plt.close(fig)
@@ -49,7 +51,7 @@ def fig_per_task(tag="base"):
 def fig_base_vs_ft():
     b, f = _load("base"), _load("ft")
     if b is None or f is None: return
-    cfgs = [c for c in ("faiss", "faiss+bm25", "faiss+bm25+kg", "faiss+bm25+kg+rerank") if c in set(b.config) & set(f.config)]
+    cfgs = [c for c in ("faiss", "faiss+bm25+kg", "faiss+bm25+kg+rerank", ROUTED) if c in set(b.config) & set(f.config)]
     tasks = ["bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"]
     fig, axes = plt.subplots(1, len(cfgs), figsize=(2.0 * len(cfgs), 2.8), sharey=True)
     for ax, c in zip(axes, cfgs):
@@ -58,7 +60,7 @@ def fig_base_vs_ft():
         ax.bar([i - 0.2 for i in range(len(tasks))], bv, 0.4, label="bge-small (base)")
         ax.bar([i + 0.2 for i in range(len(tasks))], fv, 0.4, label="bge-small (legal fine-tuned)")
         ax.set_xticks(range(len(tasks))); ax.set_xticklabels(["BNS", "IPC", "Const", "SC", "macro"], rotation=0, fontsize=7)
-        ax.set_title(c, fontsize=8); ax.set_ylim(0, 1)
+        ax.set_title(SHORT.get(c, c).replace("\n", " "), fontsize=8); ax.set_ylim(0, 1)
     axes[0].set_ylabel("nDCG@10"); axes[0].legend(frameon=False, fontsize=6, loc="upper left")
     fig.tight_layout(); fig.savefig(FIG_DIR / "base_vs_finetuned.png"); plt.close(fig)
 
@@ -113,19 +115,37 @@ def fig_answer_eval():
     fig.tight_layout(); fig.savefig(FIG_DIR / "answer_eval.png"); plt.close(fig)
 
 
+def fig_reranker_variants():
+    f, l = _load("ft"), None
+    p = RESULTS_DIR / "ablation_ft_legalce" / "metrics.csv"
+    if f is None or not p.exists(): return
+    l = pd.read_csv(p)
+    tasks = ["bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"]
+    variants = [("no reranker", f, "faiss+bm25+kg"), ("generic CE", f, "faiss+bm25+kg+rerank"), ("legal CE (1 ep)", l, "faiss+bm25+kg+rerank"),
+                ("dense only", f, "faiss"), ("routed (ours)", f, ROUTED)]
+    fig, ax = plt.subplots(figsize=(7.2, 3.0)); w = 0.8 / len(variants)
+    for i, (lab, src, cfg) in enumerate(variants):
+        vals = [src[(src.task == t) & (src.config == cfg)]["R@5"].iloc[0] for t in tasks]
+        ax.bar([j + (i - len(variants) / 2 + 0.5) * w for j in range(len(tasks))], vals, w, label=lab)
+    ax.set_xticks(range(len(tasks))); ax.set_xticklabels([TASK_LABEL[t] for t in tasks]); ax.set_ylim(0, 1); ax.set_ylabel("Recall@5")
+    ax.legend(frameon=False, ncol=5, fontsize=7); ax.set_title("Reranking strategies on fine-tuned embeddings")
+    fig.tight_layout(); fig.savefig(FIG_DIR / "reranker_variants.png"); plt.close(fig)
+
+
 def fig_training_curve():
-    p = Path("outputs/models/lawline-bge-small-legal/train_meta.json")
-    if not p.exists(): return
-    h = json.load(open(p))["loss_history"]
-    fig, ax = plt.subplots(figsize=(4.2, 2.4)); ax.plot([x["step"] for x in h], [x["loss"] for x in h])
-    ax.set_xlabel("step"); ax.set_ylabel("MNRL loss"); ax.set_title("Bi-encoder fine-tuning loss")
+    fig, ax = plt.subplots(figsize=(4.6, 2.4))
+    for name, lab in (("lawline-bge-small-legal", "bi-encoder (MNRL)"), ("lawline-reranker-legal", "cross-encoder (BCE)")):
+        p = Path(f"outputs/models/{name}/train_meta.json")
+        if p.exists():
+            h = json.load(open(p))["loss_history"]; ax.plot([x["step"] for x in h], [x["loss"] for x in h], label=lab)
+    ax.set_xlabel("step"); ax.set_ylabel("loss"); ax.set_title("Fine-tuning loss"); ax.legend(frameon=False)
     fig.tight_layout(); fig.savefig(FIG_DIR / "training_loss.png"); plt.close(fig)
 
 
 def main():
     for tag in ("base", "ft"):
         fig_ablation(tag); fig_per_task(tag)
-    fig_base_vs_ft(); fig_latency(); fig_chunk_sweep(); fig_answer_eval(); fig_training_curve()
+    fig_base_vs_ft(); fig_reranker_variants(); fig_latency(); fig_chunk_sweep(); fig_answer_eval(); fig_training_curve()
     print("figures:", sorted(p.name for p in FIG_DIR.glob("*.png")))
 
 

@@ -3,7 +3,8 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from ..config import RetrievalConfig, INDEX_DIR, CHUNKS_PATH, BASE_EMBEDDING_MODEL
+from ..config import RetrievalConfig, INDEX_DIR, CHUNKS_PATH, BASE_EMBEDDING_MODEL, ROUTE_WORDS, SHORT_QUERY_WORDS
+from dataclasses import replace as _replace
 from ..data.chunking import load_chunks
 from ..data.schema import Chunk
 from ..index.embedder import get_embedder
@@ -54,7 +55,14 @@ class HybridRetriever:
 
     def retrieve(self, query: str, cfg: RetrievalConfig | None = None) -> RetrievalResult:
         cfg = cfg or RetrievalConfig()
+        route = "question"
+        if cfg.auto_route and len(query.split()) > ROUTE_WORDS and cfg.use_faiss:
+            # Narrative fact patterns: lexical overlap with procedural boilerplate misleads BM25 and the generic
+            # cross-encoder (ablation: R@5 0.325 dense-only vs 0.023 hybrid+rerank); use the legal-tuned dense retriever.
+            cfg = _replace(cfg, use_bm25=False, use_kg=False, use_reranker=False)
+            route = "narrative"
         rankings, timings = {}, {}
+        timings["route"] = 1.0 if route == "narrative" else 0.0
         types = tuple(cfg.doc_types)
         bm_mask, fa_allowed = self.type_masks(types) if types else (None, None)
         def keep(ranked):                               # KG results are filtered after the fact (cheap, small)
@@ -96,5 +104,14 @@ class HybridRetriever:
             final = reranked
         else:
             final = candidates[:cfg.final_k]
+        # Guaranteed slot: for short questions an exact KG match (e.g. "anticipatory bail" -> BNSS s.482, whose text never
+        # contains the word) is kept even when lexical/dense consensus and the generic reranker drop it. Offline evaluation
+        # showed this is neutral on the benchmark (macro R@5 0.725 -> 0.724) while fixing such vocabulary-gap queries.
+        if cfg.kg_guarantee_slot and rankings.get("kg") and rankings["kg"][0][1] >= 0.9 and len(query.split()) <= SHORT_QUERY_WORDS:
+            top_cid = rankings["kg"][0][0]
+            top_doc = top_cid.split("#c")[0]
+            if top_cid in self.by_id and not any(c.split("#c")[0] == top_doc for c, _ in final):
+                final = final[:max(0, cfg.final_k - 1)] + [(top_cid, rankings["kg"][0][1])]
+                src.setdefault(top_cid, []).append("kg-slot")
         passages = [RetrievedPassage(self.by_id[cid], float(s), src.get(cid, []), i + 1) for i, (cid, s) in enumerate(final)]
         return RetrievalResult(passages, timings, {k: [c for c, _ in v] for k, v in rankings.items()}, [c for c, _ in fused])

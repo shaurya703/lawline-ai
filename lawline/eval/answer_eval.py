@@ -19,16 +19,17 @@ from .gold import load_gold
 SEED = 13
 OUT = RESULTS_DIR / "answer_eval"
 MCQ_SYS = "You are taking the All India Bar Examination. Answer with the single letter of the correct option (a, b, c or d) and nothing else."
-JUDGE_SYS = """You are a strict legal evaluator. You will be given a question, a reference answer written by a domain expert, an
-assistant answer and (optionally) the context passages the assistant was allowed to use. Return ONLY a JSON object:
-{"correctness": 0|1|2, "faithfulness": 0|1|2, "fabricated_citation": true|false, "reason": "<one sentence>"}
+JUDGE_SYS = """You are a strict legal evaluator. You will be given a question, a reference answer written by a domain expert, and TWO
+assistant answers: answer A (closed-book, no context) and answer B (given the context passages shown). Return ONLY a JSON object:
+{"A": {"correctness": 0|1|2, "faithfulness": 0|1|2, "fabricated_citation": true|false, "reason": "<one sentence>"},
+ "B": {"correctness": 0|1|2, "faithfulness": 0|1|2, "fabricated_citation": true|false, "reason": "<one sentence>"}}
 correctness: 2 = fully consistent with the reference, 1 = partially correct / incomplete, 0 = wrong or refuses when the reference answers.
 faithfulness (only meaningful when context is given; else judge against the reference): 2 = every legal claim is supported by the
 context/reference, 1 = minor unsupported detail, 0 = material unsupported or contradicted claim.
 fabricated_citation: true if the answer cites a section/article/case number that is neither in the context nor in the reference."""
 
 
-def _sleep(s=4.0):      # free-tier pacing (~10 requests / minute per model)
+def _sleep(s=6.5):      # free-tier pacing (~10 requests / minute per model)
     time.sleep(s)
 
 
@@ -85,13 +86,16 @@ def run_grounded(engine, gen: LLMClient, judge: LLMClient, n_bns: int, n_const: 
                        rag_cit_density=len(re.findall(r"\[\d+\]", ans.answer)) / max(1, len(re.findall(r"[.!?](\s|$)", ans.answer))),
                        gen_ms=ans.timings_ms.get("generation"), retr_ms=ans.timings_ms.get("retrieval_total"))
             ctx = format_context(ans.retrieval.passages)
-            for name, a, c in (("closed", cb.text, None), ("rag", ans.answer, ctx)):
-                jprompt = f"Question: {g['query']}\n\nReference answer: {ref}\n\nAssistant answer: {a}\n\n" + (f"Context passages:\n{c}" if c else "Context passages: (none — closed-book answer)")
-                jr = judge.complete(JUDGE_SYS, jprompt); _sleep()
-                m = re.search(r"\{.*\}", jr.text, re.S)
-                j = json.loads(m.group(0)) if m else {}
-                rec[f"{name}_correct"] = j.get("correctness"); rec[f"{name}_faithful"] = j.get("faithfulness")
-                rec[f"{name}_fabricated"] = j.get("fabricated_citation"); rec[f"{name}_reason"] = j.get("reason")
+            jprompt = (f"Question: {g['query']}\n\nReference answer: {ref}\n\nAnswer A (closed-book): {cb.text}\n\n"
+                       f"Answer B (with context): {ans.answer}\n\nContext passages given to B:\n{ctx}")
+            jr = judge.complete(JUDGE_SYS, jprompt); _sleep()
+            m = re.search(r"\{.*\}", jr.text, re.S)
+            j = json.loads(m.group(0)) if m else {}
+            for name, key in (("closed", "A"), ("rag", "B")):
+                jj = j.get(key, {})
+                rec[f"{name}_correct"] = jj.get("correctness"); rec[f"{name}_faithful"] = jj.get("faithfulness")
+                rec[f"{name}_fabricated"] = jj.get("fabricated_citation"); rec[f"{name}_reason"] = jj.get("reason")
+            rec["judge_retries"] = len(jr.errors or [])
         except Exception as e:
             rec["error"] = str(e)[:300]
         rows.append(rec)

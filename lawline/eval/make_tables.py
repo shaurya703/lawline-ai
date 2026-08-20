@@ -6,8 +6,10 @@ import pandas as pd
 from ..config import RESULTS_DIR, DATA_PROCESSED
 
 OUT = RESULTS_DIR / "tables"
+ROUTED = "routed: dense (narrative) | faiss+bm25+kg+rerank (question)"
 ORDER = ["bm25", "faiss", "kg", "faiss+bm25", "faiss+kg", "bm25+kg", "faiss+bm25+kg", "faiss+rerank", "bm25+rerank",
-         "faiss+bm25+rerank", "faiss+bm25+kg+rerank"]
+         "faiss+bm25+rerank", "faiss+bm25+kg+rerank", ROUTED]
+SHORT = {ROUTED: "LawLine (routed)"}
 TASK = {"bns_qa": "BNS-QA", "ipc_facts": "IPC-Facts", "const_qa": "Const-QA", "sc_case": "SC-Case", "macro": "Macro"}
 
 
@@ -24,10 +26,11 @@ def ablation_tables(tag: str):
     df = pd.read_csv(p)
     main = df[(df.task == "macro") & df.config.isin(ORDER)].set_index("config").reindex([c for c in ORDER if c in set(df.config)]).reset_index()
     main = main[["config", "R@1", "R@5", "R@10", "MRR@10", "nDCG@10"]].rename(columns={"config": "Retriever configuration"})
+    main["Retriever configuration"] = main["Retriever configuration"].map(lambda c: SHORT.get(c, c))
     _write(f"ablation_{tag}", main, f"Retrieval ablation, macro-average over four tasks ({tag} embeddings, n=1,810 queries)", f"tab:ablation_{tag}")
     # per-task nDCG@10 for key configs
-    key = [c for c in ("bm25", "faiss", "kg", "faiss+bm25", "faiss+bm25+kg", "faiss+bm25+kg+rerank") if c in set(df.config)]
-    piv = df[df.config.isin(key)].pivot(index="config", columns="task", values="R@5").reindex(key)
+    key = [c for c in ("bm25", "faiss", "kg", "faiss+bm25", "faiss+bm25+kg", "faiss+bm25+kg+rerank", ROUTED) if c in set(df.config)]
+    piv = df[df.config.isin(key)].pivot(index="config", columns="task", values="R@5").reindex(key).rename(index=SHORT)
     piv = piv[[t for t in ("bns_qa", "ipc_facts", "const_qa", "sc_case", "macro") if t in piv.columns]].rename(columns=TASK).reset_index().rename(columns={"config": "Configuration"})
     _write(f"per_task_{tag}", piv, f"Recall@5 per task ({tag} embeddings)", f"tab:per_task_{tag}")
     sweep = df[(df.task == "macro") & df.config.str.contains(r"\[")][["config", "R@1", "R@5", "MRR@10", "nDCG@10"]].rename(columns={"config": "Fusion setting"})
@@ -46,13 +49,29 @@ def base_vs_ft():
         return
     b, f = pd.read_csv(b), pd.read_csv(f)
     rows = []
-    for cfg in ("faiss", "faiss+bm25", "faiss+bm25+kg", "faiss+bm25+kg+rerank"):
+    for cfg in ("faiss", "faiss+bm25", "faiss+bm25+kg", "faiss+bm25+kg+rerank", ROUTED):
         for task in ("bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"):
             bb = b[(b.config == cfg) & (b.task == task)]; ff = f[(f.config == cfg) & (f.task == task)]
             if len(bb) and len(ff):
-                rows.append({"Configuration": cfg, "Task": TASK[task], "nDCG@10 base": bb["nDCG@10"].iloc[0], "nDCG@10 fine-tuned": ff["nDCG@10"].iloc[0],
+                rows.append({"Configuration": SHORT.get(cfg, cfg), "Task": TASK[task], "nDCG@10 base": bb["nDCG@10"].iloc[0], "nDCG@10 fine-tuned": ff["nDCG@10"].iloc[0],
                              "Δ": ff["nDCG@10"].iloc[0] - bb["nDCG@10"].iloc[0], "R@5 base": bb["R@5"].iloc[0], "R@5 fine-tuned": ff["R@5"].iloc[0]})
     _write("base_vs_finetuned", pd.DataFrame(rows), "Effect of legal-domain fine-tuning of the bi-encoder (bge-small-en-v1.5)", "tab:finetune")
+
+
+def reranker_table():
+    f, l = RESULTS_DIR / "ablation_ft/metrics.csv", RESULTS_DIR / "ablation_ft_legalce/metrics.csv"
+    if not (f.exists() and l.exists()):
+        return
+    f, l = pd.read_csv(f), pd.read_csv(l)
+    rows = []
+    for label, src, cfg in (("no reranker (faiss+bm25+kg)", f, "faiss+bm25+kg"), ("generic cross-encoder (ms-marco-MiniLM-L-6)", f, "faiss+bm25+kg+rerank"),
+                            ("legal-fine-tuned cross-encoder (ours, 1 epoch)", l, "faiss+bm25+kg+rerank"), ("dense only (fine-tuned bi-encoder)", f, "faiss"),
+                            ("LawLine routed (dense for narrative, hybrid+generic CE otherwise)", f, ROUTED)):
+        r = {"Reranking strategy": label}
+        for t in ("bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"):
+            r[TASK[t]] = src[(src.config == cfg) & (src.task == t)]["R@5"].iloc[0]
+        rows.append(r)
+    _write("reranker_variants", pd.DataFrame(rows), "Recall@5 by reranking strategy (fine-tuned embeddings)", "tab:reranker")
 
 
 def chunk_table():
@@ -90,7 +109,7 @@ def data_table():
 def main():
     for tag in ("base", "ft"):
         ablation_tables(tag)
-    base_vs_ft(); chunk_table(); answer_table(); data_table()
+    base_vs_ft(); reranker_table(); chunk_table(); answer_table(); data_table()
     print("tables:", sorted(p.name for p in OUT.glob("*.md")))
 
 

@@ -20,10 +20,15 @@ class LLMResponse:
     errors: list = None
 
 
+GEMINI_FALLBACKS = [m for m in os.environ.get("LAWLINE_GEMINI_FALLBACKS", "gemini-3.1-flash-lite,gemini-2.5-flash,gemini-flash-lite-latest").split(",") if m]
+
+
 class LLMClient:
     def __init__(self, backend: str = "auto", temperature: float = 0.1, max_tokens: int = 700, gemini_model: str = GEMINI_MODEL):
         self.backend = backend
         self.gemini_model = gemini_model
+        self._gemini_chain = [gemini_model] + [m for m in GEMINI_FALLBACKS if m != gemini_model]
+        self._exhausted: set[str] = set()      # models whose per-day quota is gone for this session
         self.temperature = temperature
         self.max_tokens = max_tokens
         self._groq = self._gemini = None
@@ -55,11 +60,27 @@ class LLMClient:
 
     def _call_gemini(self, system: str, user: str) -> LLMResponse:
         t = time.perf_counter()
-        r = self._gemini.models.generate_content(
-            model=self.gemini_model, contents=f"{system}\n\n{user}",
-            config={"temperature": self.temperature, "max_output_tokens": self.max_tokens,
-                    "thinking_config": {"thinking_level": "minimal"}})
-        return LLMResponse(r.text.strip(), "gemini", self.gemini_model, (time.perf_counter() - t) * 1000,
+        last = None
+        for model in self._gemini_chain:
+            if model in self._exhausted:
+                continue
+            try:
+                r = self._gemini.models.generate_content(
+                    model=model, contents=f"{system}\n\n{user}",
+                    config={"temperature": self.temperature, "max_output_tokens": self.max_tokens,
+                            "thinking_config": {"thinking_level": "minimal"}})
+                if not getattr(r, "text", None):
+                    raise RuntimeError(f"{model}: empty response")
+                break
+            except Exception as e:                       # per-day quota -> move down the chain; per-minute -> let caller back off
+                last = e
+                if "PerDay" in str(e) or "per day" in str(e).lower():
+                    self._exhausted.add(model); continue
+                raise
+        else:
+            raise RuntimeError(f"all Gemini models exhausted: {last}")
+        self.gemini_model = model
+        return LLMResponse(r.text.strip(), "gemini", model, (time.perf_counter() - t) * 1000,
                            getattr(getattr(r, "usage_metadata", None), "prompt_token_count", None),
                            getattr(getattr(r, "usage_metadata", None), "candidates_token_count", None))
 
