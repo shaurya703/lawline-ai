@@ -1,1 +1,9 @@
-(eval):1: command not found: timeout
+2026-08-21 18:02:10.897 Uvicorn server started on :::8521
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8521
+  Network URL: http://192.168.1.2:8521
+  External URL: http://106.202.106.163:8521
+
+  Stopping...

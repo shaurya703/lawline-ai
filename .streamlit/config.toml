@@ -1,6 +1,6 @@
 [server]
 headless = true
-fileWatcherType = "none"
+fileWatcherType = "poll"
 maxUploadSize = 50
 [theme]
 base = "dark"
