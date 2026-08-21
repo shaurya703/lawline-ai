@@ -21,6 +21,14 @@ scripts/       build_indices.py, run_api.sh, run_ui.sh
 tests/         unit + API tests (no network / indices needed)
 ```
 
+## React front-end (`frontend/`)
+Full multi-page app: landing (ray-traced black-hole hero + neural network canvas), Command Center, Counsel (conversational, memory + follow-up rewriting), Retrieval Lab, 3D Knowledge Graph (three.js), Provision Explorer, Document Analyzer, Drafting Studio, Analytics (Plotly 2D/3D with table views), Methodology. Vite 6 · React 19 · TypeScript · Tailwind v4 · shadcn structure · framer-motion · react-force-graph-3d · Plotly.
+```bash
+LAWLINE_FAISS_TAG=ft LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal scripts/run_api.sh   # backend :8000 (lawline/api.py + api_ext.py)
+cd frontend && npm install && npm run dev                                                         # http://localhost:5173
+```
+Design system: `.claude/skills/frontend-design/SKILL.md` and `design-system/lawline-ai/MASTER.md`.
+
 ## Quick start
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"

@@ -7,6 +7,8 @@ from .config import RetrievalConfig
 from . import __version__
 
 app = FastAPI(title="LawLine AI", version=__version__, description="Hybrid RAG for Indian legal research")
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 _engine = None
 
 
@@ -51,3 +53,7 @@ def retrieve(q: QueryIn):
     rr = get_engine().retriever.retrieve(q.question, _cfg(q))
     return {"passages": [{"rank": p.rank, "chunk_id": p.chunk.chunk_id, "citation": p.chunk.citation, "score": p.score,
                           "sources": p.sources, "text": p.chunk.text} for p in rr.passages], "timings_ms": rr.timings_ms}
+
+
+from .api_ext import router as _ext
+app.include_router(_ext)
