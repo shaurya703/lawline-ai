@@ -102,20 +102,24 @@ def load_ipc() -> list[Document]:
     h = pd.read_parquet(DATA_RAW / "Hanno-Labs__indian-ipc-statute-identification/data/train.parquet")
     h = h.drop_duplicates("ipc_section").set_index(h.drop_duplicates("ipc_section").ipc_section.str.upper())
     docs = []
+    def clean(v):
+        v = "" if v is None else str(v).strip()
+        return "" if v.lower() in ("nan", "none", "") else v
     for r in k.itertuples(index=False):
         sec = r.sec
-        desc = re.sub(r"^Description of IPC Section \S+\s*", "", str(r.Description)).strip()
+        desc = re.sub(r"^Description of IPC Section \S+\s*", "", clean(r.Description)).strip()
         if sec in h.index:
             statute = str(h.loc[sec, "statute_text"]).strip()
             gloss = desc.split("in Simple Words", 1)[-1].strip() if "in Simple Words" in desc else ""
             text = statute + (f"\nIn simple words: {gloss}" if gloss else "")
         else:
-            text = f"Section {sec} of the Indian Penal Code. {r.Offense}. {desc}"
-        text += f"\nOffence: {r.Offense}. Punishment: {r.Punishment}."
+            text = f"Section {sec} of the Indian Penal Code. {clean(r.Offense)}. {desc}".replace(". .", ".")
+        if clean(r.Offense) or clean(r.Punishment):
+            text += "\n" + " ".join(x for x in (f"Offence: {clean(r.Offense)}." if clean(r.Offense) else "", f"Punishment: {clean(r.Punishment)}." if clean(r.Punishment) else "") if x)
         docs.append(Document(
             doc_id=f"statute::{slug(act)}::{sec}", doc_type="statute", source="ipc/kmeanskaran+hanno",
-            title=f"Section {sec}. {str(r.Offense)[:120]} — {act}", text=text, act=act, section=sec, year=1860,
-            cited_sections=extract_section_refs(text, act), extra={"offence": r.Offense, "punishment": r.Punishment},
+            title=f"Section {sec}. {clean(r.Offense)[:120] or 'Indian Penal Code'} — {act}", text=text, act=act, section=sec, year=1860,
+            cited_sections=extract_section_refs(text, act), extra={"offence": clean(r.Offense), "punishment": clean(r.Punishment)},
         ))
     # any IPC section present only in Hanno
     have = {d.section for d in docs}
@@ -123,6 +127,25 @@ def load_ipc() -> list[Document]:
         if sec not in have:
             docs.append(Document(doc_id=f"statute::{slug(act)}::{sec}", doc_type="statute", source="ipc/hanno",
                                  title=f"Section {sec} — {act}", text=row.statute_text, act=act, section=sec, year=1860))
+    # general-part sections (definitions, general exceptions, abetment, attempt...) exist only in the bare-acts dump
+    have = {d.section for d in docs}
+    bare = pd.read_parquet(DATA_RAW / "mratanusarkar__Indian-Laws/data/indian_law_bare_acts_dataset.parquet")
+    for r in bare[bare.act_title.str.strip() == act].itertuples(index=False):
+        sec = str(r.section).strip().upper(); text = (r.law or "").strip()
+        if sec not in have and len(text) > 40:
+            lines = text.split("\n"); title_line = next((l for l in lines if re.match(rf"^\s*{re.escape(sec)}\.", l)), f"Section {sec}")
+            docs.append(Document(doc_id=f"statute::{slug(act)}::{sec}", doc_type="statute", source="indiacode/bare-acts",
+                                 title=f"{title_line.strip()[:140]} — {act}", text=text, act=act, section=sec, year=1860,
+                                 cited_sections=extract_section_refs(text, act)))
+            have.add(sec)
+    # remaining gaps from the IPC commentary book (statutory text only)
+    from .ipc_book import ipc_from_book
+    for sec, (title, body) in ipc_from_book().items():
+        if sec not in have:
+            docs.append(Document(doc_id=f"statute::{slug(act)}::{sec}", doc_type="statute", source="ipc/book-pdf",
+                                 title=f"{sec}. {title[:120]} — {act}", text=f"Section {sec} of the Indian Penal Code. {title}. {body}", act=act, section=sec, year=1860,
+                                 cited_sections=extract_section_refs(body, act)))
+            have.add(sec)
     return docs
 
 
