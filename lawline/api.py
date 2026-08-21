@@ -57,3 +57,5 @@ def retrieve(q: QueryIn):
 
 from .api_ext import router as _ext
 app.include_router(_ext)
+from .api_features import router as _feat
+app.include_router(_feat)

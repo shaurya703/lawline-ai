@@ -13,6 +13,6 @@ export function layout(extra: Partial<Layout> = {}): Partial<Layout> {
     ...extra };
 }
 export const config: Partial<Config> = { displayModeBar: true, displaylogo: false, responsive: true, modeBarButtonsToRemove: ["lasso2d", "select2d"], toImageButtonOptions: { format: "png", scale: 2 } };
-export function Chart({ data, layout: l, height = 360, style }: { data: Data[]; layout?: Partial<Layout>; height?: number; style?: React.CSSProperties }) {
-  return <Plot data={data} layout={layout({ height, ...l })} config={config} useResizeHandler style={{ width: "100%", height, ...style }} />;
+export function Chart({ data, layout: l, height = 360, style, onClick }: { data: Data[]; layout?: Partial<Layout>; height?: number; style?: React.CSSProperties; onClick?: (e: never) => void }) {
+  return <Plot data={data} layout={layout({ height, ...l })} config={config} useResizeHandler style={{ width: "100%", height, ...style }} onClick={onClick as never} />;
 }
