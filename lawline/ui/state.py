@@ -17,9 +17,11 @@ def embed_choice():
 
 @st.cache_resource(show_spinner="Spinning up retrieval cores…")
 def engine():
+    from ..bootstrap import ensure_assets
+    ensure_assets()
     from ..engine import QueryEngine
     tag, model = embed_choice()
-    return QueryEngine(faiss_tag=tag, embed_model=model)
+    return QueryEngine(faiss_tag=tag, embed_model=model, load_reranker=os.environ.get("LAWLINE_LITE", "0") != "1")
 
 
 @st.cache_data

@@ -13,3 +13,4 @@ google-genai
 python-dotenv
 pypdf
 tabulate
+huggingface_hub

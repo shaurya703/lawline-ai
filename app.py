@@ -5,6 +5,14 @@ import streamlit as st
 from lawline.ui import theme
 from lawline.ui.pages import home, counsel, retrieval_lab, kg, explorer, analytics, analyzer, drafting, methodology
 
+import os
+for k, v in (("LAWLINE_FAISS_TAG", "ft"), ("LAWLINE_EMBED_MODEL", "outputs/models/lawline-bge-small-legal")):
+    os.environ.setdefault(k, v)
+try:                                   # hosted: map Streamlit secrets -> env (GEMINI_API_KEY, LAWLINE_LITE, ...)
+    for _k in st.secrets:
+        os.environ.setdefault(_k, str(st.secrets[_k]))
+except Exception:
+    pass
 st.set_page_config(page_title="LawLine AI", page_icon="⚖️", layout="wide", initial_sidebar_state="expanded")
 theme.inject()
 PAGES = {

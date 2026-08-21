@@ -6,7 +6,7 @@ from huggingface_hub import HfApi
 
 ap = argparse.ArgumentParser(); ap.add_argument("--space", required=True); ap.add_argument("--private", action="store_true"); a = ap.parse_args()
 api = HfApi(token=os.environ["HF_TOKEN"]); root = Path(__file__).resolve().parent.parent
-api.create_repo(a.space, repo_type="space", space_sdk="streamlit", private=a.private, exist_ok=True)
+api.create_repo(a.space, repo_type="space", space_sdk="docker", private=a.private, exist_ok=True)
 # secrets / variables
 if os.environ.get("GEMINI_API_KEY"):
     api.add_space_secret(a.space, "GEMINI_API_KEY", os.environ["GEMINI_API_KEY"])
@@ -17,10 +17,8 @@ title: LawLine AI
 emoji: ⚖️
 colorFrom: blue
 colorTo: purple
-sdk: streamlit
-sdk_version: "1.40.1"
-python_version: "3.12"
-app_file: app.py
+sdk: docker
+app_port: 7860
 pinned: true
 license: mit
 short_description: Grounded legal research for Indian law (hybrid RAG + knowledge graph)
@@ -29,6 +27,18 @@ short_description: Grounded legal research for Indian law (hybrid RAG + knowledg
 Knowledge-graph-augmented hybrid retrieval for Indian law with cited, grounded answers. Source: https://github.com/shaurya703/lawline-ai
 """
 stage = Path(tempfile.mkdtemp()); (stage / "README.md").write_text(readme)
+(stage / "Dockerfile").write_text("""FROM python:3.12-slim
+WORKDIR /app
+ENV PYTHONUNBUFFERED=1 TOKENIZERS_PARALLELISM=false HF_HOME=/app/.hf STREAMLIT_SERVER_HEADLESS=true LAWLINE_FAISS_TAG=ft LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN mkdir -p /app/.hf /app/.streamlit && chmod -R 777 /app && python -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
+EXPOSE 7860
+CMD ["streamlit", "run", "app.py", "--server.port=7860", "--server.address=0.0.0.0", "--server.fileWatcherType=none"]
+""")
+(stage / ".streamlit").mkdir(exist_ok=True); (stage / ".streamlit" / "config.toml").write_text('[server]\nheadless = true\nfileWatcherType = "none"\nmaxUploadSize = 50\nenableXsrfProtection = false\nenableCORS = false\n[theme]\nbase = "dark"\n')
 for rel in ["app.py", "requirements.txt", "lawline", "outputs/indices/bm25", "outputs/indices/kg", "outputs/indices/faiss_ft", "outputs/models/lawline-bge-small-legal",
             "outputs/results", "outputs/figures", "data/processed/chunks.jsonl", "data/processed/corpus_stats.json", "data/processed/gold_stats.json"]:
     src = root / rel; dst = stage / rel
