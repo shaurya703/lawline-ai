@@ -8,3 +8,5 @@ outputs/models/
 .pytest_cache/
 .coverage
 htmlcov/
+frontend/node_modules/
+frontend/dist/
