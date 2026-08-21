@@ -35,3 +35,5 @@ INFO:     127.0.0.1:49417 - "GET /kg/search?q=anticipatory%20bail&limit=12 HTTP/
 INFO:     127.0.0.1:49429 - "GET /analytics HTTP/1.1" 200 OK
 INFO:     127.0.0.1:49431 - "GET /analytics HTTP/1.1" 200 OK
 INFO:     127.0.0.1:49453 - "POST /chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49962 - "GET /health HTTP/1.1" 200 OK
+INFO:     106.202.106.163:0 - "GET /health HTTP/1.1" 200 OK

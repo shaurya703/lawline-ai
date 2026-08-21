@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "/api";
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch(BASE + path, { headers: { "content-type": "application/json" }, ...init });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${(await r.text()).slice(0, 200)}`);
