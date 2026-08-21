@@ -1,5 +1,7 @@
 # LawLine AI — Conversational Assistant for Legal Support
 
+**Live app:** https://lawline-ai.streamlit.app · assets: https://huggingface.co/datasets/shaurya2121/lawline-ai-assets
+
 Hybrid Retrieval-Augmented Generation for Indian law: FAISS (semantic) + BM25 (lexical) + legal knowledge graph
 (entity) → Reciprocal Rank Fusion → cross-encoder reranking → grounded, cited answers from an LLM.
 Includes a legally fine-tuned bi-encoder, a 1,810-query evaluation benchmark across four tasks, a pytest suite,
