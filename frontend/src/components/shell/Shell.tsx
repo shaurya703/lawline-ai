@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeftRight, BookMarked, ChevronsLeft, ChevronsRight, FolderKanban, Gavel, Keyboard, Menu, Scale, ScrollText, Search, Siren, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { applySettings, files, settings } from "@/lib/store";
+import { apiState, applySettings, files, settings } from "@/lib/store";
 import { NAV, ALL } from "./nav";
 import { Drawer, Modal, Toasts } from "./ui";
 import Aurora from "@/components/fx/Aurora";
@@ -63,14 +63,25 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
 
 function Clock() { const [t, setT] = useState(new Date()); useEffect(() => { const id = setInterval(() => setT(new Date()), 1000); return () => clearInterval(id); }, []); return <span className="font-mono text-[11px] tabular-nums text-muted">{t.toLocaleTimeString("en-IN", { hour12: false })} IST</span>; }
 function Status() {
-  const [s, setS] = useState<{ ok: boolean; ms: number } | null>(null); const [hist, setHist] = useState<number[]>([]);
+  const [s, setS] = useState<{ ok: boolean; ms: number; base: string } | null>(null); const [hist, setHist] = useState<number[]>([]);
   useEffect(() => { let live = true; const tick = async () => { const r = await api.health(); if (!live) return; setS(r); setHist(h => [...h.slice(-19), r.ok ? r.ms : 0]); }; void tick(); const id = setInterval(tick, 20000); return () => { live = false; clearInterval(id); }; }, []);
-  const max = Math.max(100, ...hist);
+  const max = Math.max(100, ...hist); const where = s?.base.includes("localhost") || s?.base.includes("127.0.0.1") ? "local" : s?.base.includes("trycloudflare") ? "tunnel" : "api";
   return (
-    <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 sm:flex" title={s ? `API ${s.ok ? "online" : "unreachable"} · ${Math.round(s.ms)} ms` : "checking"}>
+    <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-1 sm:flex" title={s ? `API ${s.ok ? "online" : "unreachable"} · ${s.base} · ${Math.round(s.ms)} ms` : "checking"}>
       <span className={cn("orb", s && !s.ok && "down", s?.ok && "ring-pulse")} />
-      <span className="font-mono text-[10px] uppercase tracking-wider text-muted">{s ? (s.ok ? `cores online · ${Math.round(s.ms)}ms` : "api offline") : "linking…"}</span>
+      <span className="font-mono text-[10px] uppercase tracking-wider text-muted">{s ? (s.ok ? `${where} online · ${Math.round(s.ms)}ms` : "api offline") : "linking…"}</span>
       <svg width="48" height="14" aria-hidden className="ml-1">{hist.map((v, i) => <rect key={i} x={i * 2.4} y={14 - (v / max) * 14} width="1.6" height={(v / max) * 14} fill={v ? "var(--primary)" : "var(--danger)"} opacity=".8" />)}</svg>
+    </div>
+  );
+}
+
+function OfflineBanner() {
+  const a = apiState.use(); const nav = useNavigate();
+  if (!a.checked || a.ok) return null;
+  return (
+    <div role="alert" className="border-b border-danger/40 bg-danger/10 px-4 py-2 text-xs md:px-8">
+      <span className="font-semibold text-danger">Backend unreachable.</span> <span className="text-muted">Tried the hosted tunnel and <code className="font-mono">localhost:8000</code>. On the LawLine Mac run <code className="font-mono">scripts/run_api.sh</code>; elsewhere the tunnel may be asleep or blocked by your network's DNS — </span>
+      <button onClick={() => nav("/app/settings")} className="cursor-pointer text-primary underline">set an API URL in Settings</button><span className="text-muted"> or </span><button onClick={() => { void api.health(); }} className="cursor-pointer text-primary underline">retry</button>.
     </div>
   );
 }
@@ -141,6 +152,7 @@ export default function Shell() {
             <button onClick={() => setPalette(true)} className="flex h-9 cursor-pointer items-center gap-2 rounded-[10px] border border-primary/30 bg-primary/10 px-3 font-mono text-[11px] text-fg transition-colors hover:border-primary" aria-label="Open command palette"><Search className="h-3.5 w-3.5 text-primary" />⌘K</button>
           </div>
         </header>
+        <OfflineBanner />
         <main className={cn("mx-auto w-full flex-1 px-4 py-6 md:px-8", st.density === "compact" ? "max-w-[1600px]" : "max-w-[1360px]")}>
           <AnimatePresence mode="wait">
             <motion.div key={loc.pathname} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: .24, ease: EASE }}>

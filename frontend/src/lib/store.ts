@@ -31,3 +31,6 @@ export function toast(text: string, kind: Toast["kind"] = "ok") { const id = ++t
 type Activity = { list: { at: number; kind: string; text: string; to?: string }[] };
 export const activity = makeStore<Activity>("lawline.activity", { list: [] });
 export const logActivity = (kind: string, text: string, to?: string) => activity.set(s => ({ list: [{ at: Date.now(), kind, text, to }, ...s.list].slice(0, 50) }));
+
+export type ApiState = { base: string; ok: boolean; ms: number; checked: number };
+export const apiState = makeStore<ApiState>(null, { base: "", ok: false, ms: 0, checked: 0 });

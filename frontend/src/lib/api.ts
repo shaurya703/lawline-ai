@@ -1,8 +1,25 @@
-import { settings } from "./store";
+import { apiState, settings } from "./store";
 const ENV_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "/api";
-export const base = () => settings.get().apiBase || ENV_BASE;
+/** Candidate API bases in priority order: user override → build-time URL (tunnel) → local backend. */
+const candidates = () => Array.from(new Set([settings.get().apiBase, ENV_BASE, "http://localhost:8000", "http://127.0.0.1:8000"].filter(Boolean)));
+async function ping(b: string, ms = 4000) { const t = performance.now(); const c = new AbortController(); const id = setTimeout(() => c.abort(), ms); try { const r = await fetch(b + "/health", { cache: "no-store", signal: c.signal }); return r.ok ? performance.now() - t : null; } catch { return null; } finally { clearTimeout(id); } }
+let resolving: Promise<string> | null = null;
+/** Pick the first reachable base; remembered until a request fails. */
+export function resolveBase(force = false): Promise<string> {
+  if (!force && apiState.get().base && apiState.get().ok) return Promise.resolve(apiState.get().base);
+  if (resolving) return resolving;
+  resolving = (async () => {
+    for (const b of candidates()) { const ms = await ping(b); if (ms !== null) { apiState.set({ base: b, ok: true, ms, checked: Date.now() }); return b; } }
+    const b = candidates()[0]; apiState.set({ base: b, ok: false, ms: 0, checked: Date.now() }); return b;
+  })().finally(() => { resolving = null; });
+  return resolving;
+}
+export const base = () => apiState.get().base || settings.get().apiBase || ENV_BASE;
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(base() + path, { headers: { "content-type": "application/json" }, ...init });
+  const b = await resolveBase();
+  let r: Response;
+  try { r = await fetch(b + path, { headers: { "content-type": "application/json" }, ...init }); }
+  catch (e) { apiState.set({ ok: false }); throw new Error(`API unreachable at ${b} (${String(e)})`); }
   if (!r.ok) throw new Error(`${r.status} ${r.statusText}: ${(await r.text()).slice(0, 200)}`);
   return r.json() as Promise<T>;
 }
@@ -10,7 +27,7 @@ export const api = {
   get: <T,>(p: string) => req<T>(p),
   post: <T,>(p: string, body: unknown) => req<T>(p, { method: "POST", body: JSON.stringify(body) }),
   upload: async <T,>(p: string, file: File, params = "") => { const fd = new FormData(); fd.append("file", file); const r = await fetch(`${base()}${p}${params}`, { method: "POST", body: fd }); if (!r.ok) throw new Error(`${r.status}`); return r.json() as Promise<T>; },
-  health: async () => { const t = performance.now(); try { const r = await fetch(base() + "/health", { cache: "no-store" }); return { ok: r.ok, ms: performance.now() - t }; } catch { return { ok: false, ms: performance.now() - t }; } },
+  health: async () => { const b = await resolveBase(!apiState.get().ok); const ms = await ping(b); if (ms === null) { await resolveBase(true); } else apiState.set({ base: b, ok: true, ms, checked: Date.now() }); const st = apiState.get(); return { ok: st.ok, ms: st.ms, base: st.base }; },
 };
 export type Passage = { rank: number; citation: string; text: string; sources: string[]; score: number; doc_id?: string; used?: boolean };
 export type ChatOut = { answer: string; translated?: string | null; search_query: string; followups: string[]; passages: Passage[]; timings_ms: Record<string, number>; model?: string };

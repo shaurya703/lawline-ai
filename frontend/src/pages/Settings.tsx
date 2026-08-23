@@ -1,7 +1,7 @@
 import { Mic, Palette as PaletteIcon, Sparkles, Wifi } from "lucide-react";
 import { settings, toast, type Settings as S } from "@/lib/store";
 import { Button, Card, Input, Label, PageHeader, Select, Toggle, H2 } from "@/components/shell/ui";
-import { api } from "@/lib/api";
+import { api, resolveBase } from "@/lib/api";
 import { cn } from "@/lib/utils";
 const ACCENTS: { id: S["accent"]; c: string }[] = [{ id: "cyan", c: "#00e5ff" }, { id: "violet", c: "#a78bfa" }, { id: "amber", c: "#ffb84d" }, { id: "emerald", c: "#2ee6a6" }, { id: "rose", c: "#ff6b9d" }];
 export default function SettingsPage() {
@@ -28,7 +28,7 @@ export default function SettingsPage() {
         </Card>
         <Card className="space-y-4"><H2 className="flex items-center gap-2 text-base"><Wifi className="h-4 w-4 text-primary" />Connection</H2>
           <Label>API base URL override<Input placeholder={(import.meta.env.VITE_API_BASE as string) || "/api"} value={s.apiBase} onChange={e => settings.set({ apiBase: e.target.value.trim() })} /></Label>
-          <div className="flex gap-2"><Button size="sm" onClick={async () => { const r = await api.health(); toast(r.ok ? `API reachable · ${Math.round(r.ms)} ms` : "API unreachable", r.ok ? "ok" : "err"); }}>Test connection</Button><Button size="sm" variant="ghost" onClick={() => settings.set({ apiBase: "" })}>Reset</Button></div>
+          <div className="flex gap-2"><Button size="sm" onClick={async () => { await resolveBase(true); const r = await api.health(); toast(r.ok ? `API reachable at ${r.base} · ${Math.round(r.ms)} ms` : "API unreachable on every candidate URL", r.ok ? "ok" : "err"); }}>Test connection</Button><Button size="sm" variant="ghost" onClick={() => settings.set({ apiBase: "" })}>Reset</Button></div>
           <p className="text-xs text-muted">Point the app at a local backend (<code className="font-mono">http://localhost:8000</code>) or a tunnel.</p>
         </Card>
       </div>
