@@ -13,7 +13,7 @@ while true; do
   for i in $(seq 1 60); do URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$LOG" | head -1); [ -n "$URL" ] && break; sleep 1; done
   if [ -n "$URL" ] && [ "$URL" != "$(cat "$URLFILE" 2>/dev/null)" ]; then
     echo "$URL" > "$URLFILE"; echo "$(date) tunnel url -> $URL" >> outputs/tunnel_events.log
-    gh variable set VITE_API_BASE --body "$URL" >> outputs/tunnel_events.log 2>&1 && gh workflow run pages.yml >> outputs/tunnel_events.log 2>&1
+    : # frontend now points at the permanent Modal URL; the tunnel is only a manual debugging tool
   fi
   wait $PID; echo "$(date) cloudflared exited, restarting" >> outputs/tunnel_events.log; sleep 5
 done

@@ -15,6 +15,12 @@ image = (
                  "numpy", "pandas", "pyarrow", "scikit-learn", "google-genai", "python-dotenv", "pypdf",
                  "huggingface_hub", "tabulate")
     .add_local_python_source("lawline")
+    # small metadata the API reads (stats, benchmark tables, AIBE questions, training meta) — copied into the volume at startup
+    .add_local_file("data/processed/corpus_stats.json", "/meta/data/processed/corpus_stats.json")
+    .add_local_file("data/processed/gold_stats.json", "/meta/data/processed/gold_stats.json")
+    .add_local_dir("data/raw/jmukesh99__AIBE_mcq", "/meta/data/raw/jmukesh99__AIBE_mcq")
+    .add_local_dir("outputs/results", "/meta/outputs/results", ignore=["**/runs.json", "cache_*", "**/preds*"])
+    .add_local_file("outputs/models/lawline-bge-small-legal/train_meta.json", "/meta/outputs/models/lawline-bge-small-legal/train_meta.json")
 )
 vol = modal.Volume.from_name("lawline-assets", create_if_missing=True)
 
@@ -26,7 +32,17 @@ vol = modal.Volume.from_name("lawline-assets", create_if_missing=True)
 def api():
     import os
     os.environ["LAWLINE_ROOT"] = "/store"   # data/ and outputs/ live in the persistent volume
+    os.environ["LAWLINE_FAISS_TAG"] = "ft"  # serve the fine-tuned index + encoder (the shipped config)
+    os.environ["LAWLINE_EMBED_MODEL"] = "/store/outputs/models/lawline-bge-small-legal"
     os.environ.setdefault("HF_HOME", "/store/.hf")
+    import shutil
+    meta = __import__("pathlib").Path("/meta")
+    for f in meta.rglob("*"):
+        if f.is_file():
+            dst = __import__("pathlib").Path("/store") / f.relative_to(meta)
+            if not dst.exists():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, dst)
     from lawline.bootstrap import ensure_assets
     ensure_assets(progress=print)
     vol.commit()

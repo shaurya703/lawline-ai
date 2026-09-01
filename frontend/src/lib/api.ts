@@ -9,8 +9,12 @@ export function resolveBase(force = false): Promise<string> {
   if (!force && apiState.get().base && apiState.get().ok) return Promise.resolve(apiState.get().base);
   if (resolving) return resolving;
   resolving = (async () => {
-    for (const b of candidates()) { const ms = await ping(b); if (ms !== null) { apiState.set({ base: b, ok: true, ms, checked: Date.now() }); return b; } }
-    const b = candidates()[0]; apiState.set({ base: b, ok: false, ms: 0, checked: Date.now() }); return b;
+    for (const b of candidates()) { const ms = await ping(b, 8000); if (ms !== null) { apiState.set({ base: b, ok: true, ms, checked: Date.now() }); return b; } }
+    // nothing answered quickly — the hosted backend may be cold-starting (scale-to-zero); give it one long try
+    const primary = candidates()[0];
+    const ms = await ping(primary, 60000);
+    apiState.set({ base: primary, ok: ms !== null, ms: ms ?? 0, checked: Date.now() });
+    return primary;
   })().finally(() => { resolving = null; });
   return resolving;
 }
