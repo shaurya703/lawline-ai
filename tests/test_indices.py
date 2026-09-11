@@ -6,7 +6,23 @@ from lawline.index.knowledge_graph import LegalKG
 
 def test_tokenizer_keeps_section_codes():
     toks = tokenize("Offence under Section 498A and 304-B of the IPC")
-    assert "498a" in toks and "304" in toks and "ipc" in toks and "the" not in toks
+    assert "498a" in toks and "304b" in toks and "ipc" in toks and "the" not in toks
+
+
+def test_tokenizer_hyphenated_section_code_matches_bare_form():
+    # s.498A and s.498 are different offences (cruelty vs enticement), as are s.304B and s.304.
+    # Both spellings of the suffixed section must produce the same token, and neither may
+    # collapse onto the unsuffixed section.
+    assert tokenize("Section 498-A") == tokenize("Section 498A") == ["section", "498a"]
+    assert tokenize("Section 304-B") == tokenize("Section 304B") == ["section", "304b"]
+    assert tokenize("Section 498") == ["section", "498"]
+    assert tokenize("Article 21-A") == ["article", "21a"]
+
+
+def test_tokenizer_does_not_join_non_section_hyphens():
+    assert tokenize("sections 299-304") == ["sections", "299", "304"]   # a range, not a suffix
+    assert tokenize("COVID-19 restrictions") == ["covid", "19", "restrictions"]
+    assert tokenize("24-hour custody") == ["24", "hour", "custody"]
 
 
 def test_bm25_roundtrip(tiny_chunks, tmp_path):
