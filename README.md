@@ -47,6 +47,9 @@ LAWLINE_FAISS_TAG=ft LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal 
 LAWLINE_FAISS_TAG=ft LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal scripts/run_ui.sh    # http://localhost:8501
 ```
 Docker: `docker compose up --build` (serves API on :8000 and UI on :8501).
+The image copies prebuilt artefacts rather than building them, so run the index and
+training steps above first — `outputs/indices/` and `outputs/models/` are gitignored,
+and without them the build fails at `COPY outputs/indices`.
 
 ## Results (see `docs/REPORT_PHASE3_CHAPTERS.md`, `paper/`, `outputs/results/tables`, `outputs/figures`)
 

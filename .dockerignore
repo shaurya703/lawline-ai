@@ -1,0 +1,37 @@
+# The image only needs: pyproject.toml, README.md, lawline/,
+# data/processed/chunks.jsonl, outputs/indices/ and outputs/models/.
+# Everything else is build-context weight (374 MB -> ~87 MB).
+
+.git
+.github
+.gitignore
+.claude
+.streamlit
+
+.venv
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store
+.env
+
+frontend
+paper
+docs
+design-system
+scripts
+tests
+
+# data/: only processed/chunks.jsonl is copied in
+data/*
+!data/processed
+data/processed/*
+!data/processed/chunks.jsonl
+
+# outputs/: only the prebuilt indices and models are copied in
+outputs/*
+!outputs/indices
+!outputs/models
