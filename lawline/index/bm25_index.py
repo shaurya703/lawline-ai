@@ -8,11 +8,15 @@ from rank_bm25 import BM25Okapi
 STOP = set("""a an the of in on at to for and or is are was were be been by with as that this these those it its from
 under shall may which who whom whose any such other than not no into upon within without where when what how all
 every each said""".split())
-_TOK = re.compile(r"[a-z0-9]+(?:[a-z0-9]+)?")
+_TOK = re.compile(r"[a-z0-9]+")
+# "498-A" and "304-B" are as common in Indian legal writing as the bare "498A". Hyphens become
+# spaces below, which would strand the one-letter suffix for the len>1 filter to drop — collapsing
+# s.498A (cruelty) onto the unrelated s.498, and s.304B (dowry death) onto s.304. Join it first.
+_SEC_SUFFIX = re.compile(r"(?<=\d)-(?=[a-z]{1,2}\b)")
 
 
 def tokenize(text: str) -> list[str]:
-    text = text.lower().replace("-", " ")
+    text = _SEC_SUFFIX.sub("", text.lower()).replace("-", " ")
     toks = _TOK.findall(text)
     return [t for t in toks if t not in STOP and len(t) > 1]
 
