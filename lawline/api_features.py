@@ -17,19 +17,32 @@ PAIRS = [(IPC, BNS), (CRPC, BNSS), (IEA, BSA)]
 OLD_TO_NEW = dict(PAIRS); NEW_TO_OLD = {n: o for o, n in PAIRS}
 
 
-def llm_json(system: str, user: str, max_tokens: int = 1200):
-    txt = llm(system + "\nReturn ONLY valid JSON, no markdown fences.", user, max_tokens)
+def parse_json(txt: str):
+    """The JSON value in a model reply, or None. Tolerates text around it and trailing commas."""
     m = re.search(r"[\[{].*[\]}]", txt, re.S)
     if not m:
-        raise HTTPException(502, f"model returned no JSON: {txt[:200]}")
-    try:
-        return json.loads(m.group(0))
-    except json.JSONDecodeError:
-        cleaned = re.sub(r",\s*([\]}])", r"\1", m.group(0))
+        return None
+    for candidate in (m.group(0), re.sub(r",\s*([\]}])", r"\1", m.group(0))):
         try:
-            return json.loads(cleaned)
+            return json.loads(candidate)
         except json.JSONDecodeError:
-            raise HTTPException(502, "model returned malformed JSON")
+            continue
+    return None
+
+
+def llm_json(system: str, user: str, max_tokens: int = 1200, kind: str = "object"):
+    """Ask for JSON in the backend's JSON mode. In free-text mode the model drops a closing brace on nested
+    schemas often enough to matter (about half of /argue replies), so the syntax is left to the backend, and
+    one more attempt is made if a reply still does not parse (e.g. cut off at the token limit)."""
+    txt = ""
+    for _ in range(2):
+        txt = llm(system + "\nReturn ONLY valid JSON, no markdown fences.", user, max_tokens, json_mode=kind)
+        out = parse_json(txt)
+        if out is not None:
+            return out
+    if not re.search(r"[\[{]", txt):
+        raise HTTPException(502, f"model returned no JSON: {txt[:200]}")
+    raise HTTPException(502, "model returned malformed JSON")
 
 
 @lru_cache(maxsize=1)
@@ -193,7 +206,7 @@ def offence(q: str, limit: int = 8):
     cls = None
     if out:
         cls = llm_json("For each Indian offence provision, classify per the CrPC/BNSS First Schedule from general legal knowledge. JSON list of {\"doc_id\": str, \"cognizable\": bool|null, \"bailable\": bool|null, \"compoundable\": bool|null, \"triable_by\": str, \"ingredients\": [str] (3-5 essential ingredients)}. Mark null when unsure.",
-                       "\n\n".join(f"doc_id={h['doc_id']} :: {h['act']} s.{h['section']}: {h['text'][:700]}" for h in out), 1200)
+                       "\n\n".join(f"doc_id={h['doc_id']} :: {h['act']} s.{h['section']}: {h['text'][:700]}" for h in out), 1200, kind="array")
     by = {c.get("doc_id"): c for c in (cls or []) if isinstance(c, dict)}
     for h in out:
         h["classification"] = by.get(h["doc_id"])

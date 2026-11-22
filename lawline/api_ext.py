@@ -20,12 +20,11 @@ def eng():
     return get_engine()
 
 
-def llm(system: str, user: str, max_tokens: int = 900) -> str:
+def llm(system: str, user: str, max_tokens: int = 900, json_mode: str | None = None) -> str:
     e = eng()
     if not e.llm or not e.llm.available:
         return "LLM backend not configured."
-    e.llm.max_tokens = max_tokens
-    return e.llm.complete(system, user).text
+    return e.llm.complete(system, user, max_tokens=max_tokens, json_mode=json_mode).text
 
 
 def _json(p: Path):
