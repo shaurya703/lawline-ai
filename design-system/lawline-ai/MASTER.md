@@ -1,45 +1,31 @@
-# LawLine AI — Design System (Master, Source of Truth)
+# LawLine AI — Design System (Master)
 
-Generated with ui-ux-pro-max (`legal research AI assistant dashboard dark professional data-dense trust`) and reconciled
-with the repo skill `.claude/skills/frontend-design/SKILL.md`, which holds the canonical tokens. Where the generator's
-generic SaaS defaults (light background, testimonial landing pattern, Fira fonts) conflict with the established product,
-the product wins — this app is a dark, data-dense research tool, not a marketing site.
+The canonical tokens, kit and rules are in `.claude/skills/frontend-design/SKILL.md`; this file records the decisions behind them.
 
-## Product pattern
-Dashboard application with a landing hero. Navigation: persistent left sidebar (grouped: LawLine / Investigate / Work /
-Evidence), sticky top bar with page title + status pill; content max-width 1280px; 32px gutters (16px < 640px).
-Landing: hero (canvas) → proof strip (3 real metrics) → primary CTA "Start a consultation" → Counsel. No testimonials,
-no pricing, no feature-card triptych.
+## Direction
+A legal research tool should look like the material it handles. The interface borrows from law reports: a paper-coloured page,
+ink text, hairline rules, a serif for source text and an oxblood accent taken from law-book bindings. It replaced a dark
+"command centre" theme (navy, cyan glow, glass panels, Orbitron) that was hard to scan and read as generic.
 
-## Style
-Dark mode (OLED-leaning): deep navy `#070b14`, glass panels over a faint 42px grid, one cyan accent per component,
-minimal glow (`0 0 10–18px` cyan at ≤ 35% alpha) on active/hover only. WCAG AA minimum (body 4.5:1, large text 3:1).
+## Information architecture
+Nineteen modules in four groups by the job they do, plus Overview, Case Files and Settings.
 
-## Tokens (from SKILL.md — do not redefine)
-bg `#070b14` · elevated `#0e1628` · border `rgba(0,229,255,.18)` · text `#dfe7f5` · muted `#8b9bb4` · primary `#00e5ff` ·
-secondary `#7c4dff` · success `#2ee6a6` · warning `#ffd166` · danger `#ff4d6d`. Spacing 8px grid; radius 10/14/18; type
-scale 39/31/25/20/16/13/12 with Orbitron (display) / Inter (body) / JetBrains Mono (ids, citations, status).
+| Group | Modules |
+|---|---|
+| Ask & learn | Counsel, Rights Guides, Offence Lookup, Glossary, Bar Exam Trainer |
+| Statutes | Provision Explorer, IPC → BNS Bridge, Compare Provisions, Knowledge Graph, Limitation Clock |
+| Documents | Document Analyzer, Judgment Summarizer, Case Timeline, Argument Arena, Citation Verifier, Drafting Studio |
+| Evaluation | Retrieval Lab, Analytics, Methodology |
 
-## Charts (ui-ux-pro-max chart domain)
-| Data | Chart | Notes |
-|---|---|---|
-| Config comparison (ablation) | grouped horizontal bar, sorted desc | series: base = muted, fine-tuned = primary |
-| Per-task profile | radar (≤ 5 axes) + data table | single fill primary 20% |
-| Training curves, chunk sweep | line, markers | one line per series, legend toggles |
-| Latency | horizontal bar (p50) with p95 whisker; log axis when spread > 10× | gauges only for live values |
-| Knowledge graph | network (SVG, server-side layout) **plus adjacency list** (a11y) | node colour by kind, edges muted 60% |
-| Answer quality | grouped bar closed-book vs RAG | success for RAG |
-Every chart: transparent background, muted gridlines, tooltip on elevated bg with primary border, a "View as table" toggle.
+The sidebar shows the four groups and opens the one that holds the current page, so at most six module links are visible at a time.
+`⌘K` searches every module and accepts direct commands ("section 302 IPC", "define bail").
 
-## Interaction rules (ux domain, CRITICAL)
-44px minimum touch targets; `cursor-pointer` on all interactive cards/rows; loading buttons disable + show progress;
-errors inline next to the cause with a retry; skeletons (not spinners) for > 300ms loads; reserve space for async content;
-sticky nav never overlaps content (pad main by nav height); keyboard order = visual order; visible focus rings; icon-only
-buttons carry `aria-label`; `prefers-reduced-motion` disables transforms and the canvas.
-
-## Motion
-120/200/280ms, ease `[0.2,0.8,0.2,1]`, opacity/transform only, stagger 40ms, one motion per interaction, max one loop on screen.
-
-## Anti-patterns
-Light-mode default; emoji as icons; purple→pink gradients; hover scale that shifts layout; marketing verbs; hidden
-disclaimer; charts without table alternative; more than one saturated accent per component.
+## Decisions
+- **One light theme.** It projects well and prints well; a second theme would double the chart and graph work.
+- **Ink primary buttons, accent for meaning.** The accent marks where you are and what is cited, so it stays scarce.
+- **Sans for interface, serif for source text.** A reader can tell at a glance what the law says from what the system says.
+- **Figures in strips, not cards.** A row of numbers separated by hairlines reads as one statement; six cards read as six.
+- **Numbers before gauges.** Rings and dials became a figure, a five-step meter or a bar.
+- **One page shape per kind of task.** Paste-and-run tools share the Workbench layout; lookups share query-then-results.
+- **Charts keep their own palette.** Categorical colours are validated for colour-vision separation and each retriever keeps one colour throughout.
+- **Self-hosted fonts** (Newsreader, IBM Plex Sans, IBM Plex Mono) so the app renders the same offline.
