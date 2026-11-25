@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeftRight, BookMarked, ChevronRight, FolderOpen, Gavel, Menu, PanelLeft, ScrollText, Search, Siren, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { api, LOCAL_API, servedLocally } from "@/lib/api";
 import { apiState, applySettings, files, navState, settings } from "@/lib/store";
 import { ALL, HOME, NAV, WORKSPACE, groupOf, itemOf } from "./nav";
 import { Drawer, IconButton, Modal, PageBoundary, Skeleton, Toasts } from "@/components/ui";
@@ -88,7 +88,11 @@ function OfflineBanner() {
   if (!a.checked || a.ok) return null;
   return (
     <div role="alert" className="border-b border-warn/25 bg-warn-soft px-4 py-2.5 text-[13px] text-ink md:px-8">
-      <span className="font-semibold">The backend is not reachable.</span> Start it with <code className="font-mono text-[12px]">scripts/run_api.sh</code>, or <Link to="/app/settings" className="link">set an API address in Settings</Link>. <button onClick={() => { void api.health(); }} className="link">Retry</button>
+      <span className="font-semibold">The backend is not reachable.</span>{" "}
+      {servedLocally
+        ? <>Start it with <code className="font-mono text-[12px]">scripts/run_api.sh</code>, or <Link to="/app/settings" className="link">set an API address in Settings</Link>.</>
+        : <>If the LawLine API is running on this computer, <button onClick={() => { settings.set({ apiBase: LOCAL_API }); void api.health().then(r => { if (r.ok) location.reload(); }); }} className="link">connect to it</button> (your browser will ask for permission), or <Link to="/app/settings" className="link">set an API address in Settings</Link>.</>}
+      {" "}<button onClick={() => { void api.health(); }} className="link">Retry</button>
     </div>
   );
 }

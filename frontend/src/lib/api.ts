@@ -2,8 +2,12 @@ import { apiState, settings } from "./store";
 const ENV_BASE = (import.meta.env.VITE_API_BASE as string | undefined) || "/api";
 // "https://host/" is the usual pasted form; "https://host//health" would not answer.
 const clean = (b: string) => b.trim().replace(/\/+$/, "");
-/** Candidate API bases in priority order: user override → build-time URL → a backend on this machine (the public site's demo mode). */
-const candidates = () => Array.from(new Set([clean(settings.get().apiBase), clean(ENV_BASE), "http://localhost:8000", "http://127.0.0.1:8000"].filter(Boolean)));
+export const LOCAL_API = "http://localhost:8000";
+/** Whether the page itself is served from this machine. Only then is a local backend looked for unasked: from a public
+ *  origin the browser would ask every visitor for access to their local network, so there it is the visitor's choice. */
+export const servedLocally = import.meta.env.DEV || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+/** Candidate API bases in priority order: user override → build-time URL → a backend on this machine. */
+const candidates = () => Array.from(new Set([clean(settings.get().apiBase), clean(ENV_BASE), ...(servedLocally ? [LOCAL_API, "http://127.0.0.1:8000"] : [])].filter(Boolean)));
 async function ping(b: string, ms = 4000) { const t = performance.now(); const c = new AbortController(); const id = setTimeout(() => c.abort(), ms); try { const r = await fetch(b + "/health", { cache: "no-store", signal: c.signal }); return r.ok ? performance.now() - t : null; } catch { return null; } finally { clearTimeout(id); } }
 let resolving: Promise<string> | null = null;
 /** Pick the first reachable base; remembered until a request fails. */
