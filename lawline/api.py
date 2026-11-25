@@ -1,9 +1,11 @@
 """FastAPI wrapper around the QueryEngine."""
 from __future__ import annotations
 import os, threading
-from fastapi import FastAPI, HTTPException
+from typing import Literal
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from .config import RetrievalConfig
+from .ratelimit import llm_budget
 from . import __version__
 
 app = FastAPI(title="LawLine AI", version=__version__, description="Hybrid RAG for Indian legal research")
@@ -20,7 +22,9 @@ def get_engine():
     with _engine_lock:                      # first requests can arrive together; load the indices and models once
         if _engine is None:
             from .engine import QueryEngine
-            _engine = QueryEngine(faiss_tag=os.environ.get("LAWLINE_FAISS_TAG", "base"),
+            from .generation.llm import LLMClient
+            # an interactive request may honour one ~40 s free-tier rate-limit hint, then gives up instead of queueing
+            _engine = QueryEngine(llm=LLMClient(max_wait_s=float(os.environ.get("LAWLINE_LLM_MAX_WAIT_S", "60"))), faiss_tag=os.environ.get("LAWLINE_FAISS_TAG", "base"),
                                   embed_model=os.environ.get("LAWLINE_EMBED_MODEL", None) or __import__("lawline.config", fromlist=["BASE_EMBEDDING_MODEL"]).BASE_EMBEDDING_MODEL)
     return _engine
 
@@ -33,11 +37,11 @@ class QueryIn(BaseModel):
     use_kg: bool = True
     use_reranker: bool = True
     final_k: int = Field(5, ge=1, le=20)
-    doc_types: list[str] = Field(default_factory=list, description='e.g. ["statute"] or ["case"]; empty = all')
+    doc_types: list[Literal["statute", "case"]] = Field(default_factory=list, max_length=2, description='e.g. ["statute"] or ["case"]; empty = all')
 
 
 def _cfg(q: QueryIn) -> RetrievalConfig:
-    return RetrievalConfig(use_faiss=q.use_faiss, use_bm25=q.use_bm25, use_kg=q.use_kg, use_reranker=q.use_reranker, final_k=q.final_k, doc_types=tuple(q.doc_types))
+    return RetrievalConfig(use_faiss=q.use_faiss, use_bm25=q.use_bm25, use_kg=q.use_kg, use_reranker=q.use_reranker, final_k=q.final_k, doc_types=tuple(sorted(set(q.doc_types))))
 
 
 @app.get("/health")
@@ -45,7 +49,7 @@ def health():
     return {"status": "ok", "version": __version__}
 
 
-@app.post("/query")
+@app.post("/query", dependencies=[Depends(llm_budget)])
 def query(q: QueryIn):
     if not any((q.use_faiss, q.use_bm25, q.use_kg)):
         raise HTTPException(400, "enable at least one retriever")

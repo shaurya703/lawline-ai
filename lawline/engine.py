@@ -36,15 +36,19 @@ class QueryEngine:
         timings = dict(rr.timings_ms)
         timings["retrieval_total"] = (time.perf_counter() - t0) * 1000
         backend = model = "extractive"
+        resp = None
+        why = "no LLM backend configured" if use_llm else "generation was not requested"
         if use_llm and self.llm and self.llm.available and rr.passages:
-            resp = self.llm.complete(SYSTEM_PROMPT, USER_TEMPLATE.format(context=format_context(rr.passages), question=question))
+            try:
+                resp = self.llm.complete(SYSTEM_PROMPT, USER_TEMPLATE.format(context=format_context(rr.passages), question=question))
+            except RuntimeError:                   # every backend failed: the cited passages are still a useful answer
+                why = "the language model is unavailable right now"
+        if resp:
             text, backend, model = resp.text, resp.backend, resp.model
             timings["generation"] = resp.latency_ms
             timings["llm_retries"] = len(resp.errors or [])
-            if resp.errors:
-                self.last_llm_errors = resp.errors
         else:
-            text = extractive_answer(rr.passages)
+            text = extractive_answer(rr.passages, why)
         cited = sorted({int(n) for grp in re.findall(r"\[((?:\d+\s*,\s*)*\d+)\]", text) for n in re.split(r"\s*,\s*", grp)})
         citations = [{"n": p.rank, "citation": p.chunk.citation, "chunk_id": p.chunk.chunk_id, "used": p.rank in cited}
                      for p in rr.passages]
