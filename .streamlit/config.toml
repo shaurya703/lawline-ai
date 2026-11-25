@@ -1,6 +1,8 @@
 [server]
 headless = true
-fileWatcherType = "poll"
+# No source watcher: it imports every lazy transformers submodule on each pass, which fails on the optional ones
+# (torchvision) and fills the log with tracebacks. Restart the app to pick up a code change.
+fileWatcherType = "none"
 maxUploadSize = 50
 [theme]
 base = "dark"

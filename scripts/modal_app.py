@@ -16,7 +16,7 @@ image = (
     modal.Image.debian_slim(python_version="3.12")
     .pip_install("torch", index_url="https://download.pytorch.org/whl/cpu")
     .pip_install("fastapi[standard]", "sentence-transformers>=3.0", "faiss-cpu", "rank-bm25", "networkx",
-                 "numpy", "pandas", "pyarrow", "scikit-learn", "google-genai", "python-dotenv", "pypdf",
+                 "numpy", "pandas", "pyarrow", "scikit-learn", "google-genai", "groq", "python-dotenv", "pypdf",
                  "huggingface_hub", "tabulate")
     .add_local_python_source("lawline")
     # small metadata the API reads (stats, benchmark tables, AIBE questions, training meta) — copied into the volume at startup

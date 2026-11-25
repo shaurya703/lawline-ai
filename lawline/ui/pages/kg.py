@@ -1,5 +1,5 @@
 import streamlit as st, plotly.graph_objects as go, networkx as nx, pandas as pd, numpy as np
-from ..theme import hero, kpi, ACCENT, ACCENT2, GOLD, GREEN, RED, MUTED
+from ..theme import hero, kpi, ACCENT, ACCENT2, GOLD, GREEN, MUTED
 from ..state import engine
 from ...index.concepts import CONCEPTS
 
@@ -31,16 +31,18 @@ def render():
         st.markdown("**Edge legend** · HAS_SECTION · REFERS_TO · CITES · ABOUT · GOVERNED_BY")
         st.markdown("".join(f'<span class="ll-badge" style="border-color:{c};color:{c}">{k}</span>' for k, c in KIND_COLOR.items()), unsafe_allow_html=True)
     with right:
-        nodes = {start}; frontier = {start}
+        order, seen, frontier = [start], {start}, [start]
         for _ in range(hops):
-            nxt = set()
+            nxt = []
             for n in frontier:
-                nxt |= set(G.successors(n)) | set(G.predecessors(n))
-            nodes |= nxt; frontier = nxt
-            if len(nodes) > max_nodes: break
-        nodes = list(nodes)[:max_nodes]; H = G.subgraph(nodes)
+                for m in [*G.successors(n), *G.predecessors(n)]:
+                    if m not in seen:
+                        seen.add(m); nxt.append(m)
+            order += nxt; frontier = nxt
+            if len(order) >= max_nodes: break
+        nodes = order[:max_nodes]; H = G.subgraph(nodes)
         pos = nx.spring_layout(H, seed=3, k=0.9 / max(1, np.sqrt(len(nodes))))
-        ex, ey, etext = [], [], []
+        ex, ey = [], []
         for u, v, d in H.edges(data=True):
             ex += [pos[u][0], pos[v][0], None]; ey += [pos[u][1], pos[v][1], None]
         fig = go.Figure(go.Scatter(x=ex, y=ey, mode="lines", line=dict(width=0.8, color="rgba(139,155,180,.35)"), hoverinfo="none", showlegend=False))
@@ -52,21 +54,21 @@ def render():
                                      marker=dict(size=[22 if n == start else 9 + min(12, H.degree(n)) for n in ns], color=color, line=dict(width=1, color="rgba(255,255,255,.4)"), opacity=.9),
                                      hovertext=[f"{H.nodes[n].get('label', n)}<br>{n}<br>degree {G.degree(n)}" for n in ns], hoverinfo="text"))
         fig.update_layout(height=560, showlegend=True, xaxis=dict(visible=False), yaxis=dict(visible=False), margin=dict(l=0, r=0, t=10, b=0), dragmode="pan")
-        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True, "displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"scrollZoom": True, "displayModeBar": False})
         edges = pd.DataFrame([{"from": G.nodes[u].get("label", u)[:50], "relation": d.get("rel"), "to": G.nodes[v].get("label", v)[:50]} for u, v, d in H.edges(data=True)])
         with st.expander(f"Edges in view ({len(edges)})"):
-            st.dataframe(edges, use_container_width=True, hide_index=True)
+            st.dataframe(edges, width="stretch", hide_index=True)
     st.markdown("#### 🧭 Concept map & IPC → BNS transition")
     rows = []
     for phrase, provs in CONCEPTS.items():
         ipc = [s for a, s in provs if a.startswith("Indian Penal")]; bns = [s for a, s in provs if a.startswith("Bharatiya Nyaya")]
         rows.append({"concept": phrase, "provisions": "; ".join(f"{a.split(',')[0]} s.{s}" for a, s in provs), "IPC": ", ".join(ipc), "BNS 2023": ", ".join(bns)})
     df = pd.DataFrame(rows); f = st.text_input("Filter concepts", "")
-    st.dataframe(df[df.concept.str.contains(f, case=False)] if f else df, use_container_width=True, hide_index=True, height=320)
+    st.dataframe(df[df.concept.str.contains(f, case=False, regex=False)] if f else df, width="stretch", hide_index=True, height=320)
     deg = pd.Series(dict(G.degree())); kinds = pd.Series({n: G.nodes[n].get("kind") for n in G})
     fig = go.Figure()
     for kind, color in KIND_COLOR.items():
         d = deg[kinds == kind]
         if len(d): fig.add_trace(go.Histogram(x=np.log10(d + 1), name=kind, marker_color=color, opacity=.7, nbinsx=40))
     fig.update_layout(barmode="overlay", height=260, title="Degree distribution (log10)", xaxis_title="log10(degree+1)")
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})

@@ -1,4 +1,4 @@
-import streamlit as st, pandas as pd
+import streamlit as st
 from ..theme import hero
 from ..state import corpus_stats, gold_stats
 

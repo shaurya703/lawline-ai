@@ -24,7 +24,7 @@ The system is a Python 3.12 package `lawline` (≈2,300 lines) with twelve modul
 | 9 | Query engine | `lawline/engine.py`, `generation/` | Prompt with numbered passages, citation-constrained generation (Gemini 3.5 Flash-Lite; Groq/extractive fallbacks), citation parsing and verification. |
 | 10 | Evaluation module | `lawline/eval/` | Gold-set builder, metrics, ablation runner, fusion sweep, chunk sweep, answer-quality judge, tables and plots. |
 | 11 | API wrapper | `lawline/api.py` | FastAPI: `/health`, `/query`, `/retrieve` with per-retriever toggles and document-type scope. |
-| 12 | User interface | `lawline/app.py` | Streamlit chat with source panel, citation ticks, per-stage latency and search scope. |
+| 12 | User interface | `app.py` | Streamlit chat with source panel, citation ticks, per-stage latency and search scope. |
 | + | Training | `lawline/training/train_biencoder.py`, `train_reranker.py` | Legal fine-tuning of the bi-encoder (MNRL, dense-mined hard negatives) and of a cross-encoder (BCE). |
 
 ---
@@ -141,7 +141,7 @@ Retrieval validated on 1,810 gold queries (§6.2–6.6); generation validated on
 
 ### 7.4 Deployment
 * **API**: `uvicorn lawline.api:app` — `GET /health`, `POST /query`, `POST /retrieve` (OpenAPI docs at `/docs`).
-* **UI**: `streamlit run lawline/app.py` — chat, sources with ✅ on cited passages, per-stage latency, search scope (all / statutes / case law), retriever toggles.
+* **UI**: `streamlit run app.py` — chat, sources with ✅ on cited passages, per-stage latency, search scope (all / statutes / case law), retriever toggles.
 * **Container**: `Dockerfile` + `docker-compose.yml` (CPU torch; prebuilt indices and fine-tuned model copied in; serves :8000 and :8501).
 * **Configuration**: `.env` (Gemini/Groq keys), `LAWLINE_FAISS_TAG=ft`, `LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal`.
 
