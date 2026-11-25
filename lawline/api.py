@@ -1,6 +1,6 @@
 """FastAPI wrapper around the QueryEngine."""
 from __future__ import annotations
-import os
+import os, threading
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from .config import RetrievalConfig
@@ -10,14 +10,18 @@ app = FastAPI(title="LawLine AI", version=__version__, description="Hybrid RAG f
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 _engine = None
+_engine_lock = threading.Lock()
 
 
 def get_engine():
     global _engine
-    if _engine is None:
-        from .engine import QueryEngine
-        _engine = QueryEngine(faiss_tag=os.environ.get("LAWLINE_FAISS_TAG", "base"),
-                              embed_model=os.environ.get("LAWLINE_EMBED_MODEL", None) or __import__("lawline.config", fromlist=["BASE_EMBEDDING_MODEL"]).BASE_EMBEDDING_MODEL)
+    if _engine is not None:
+        return _engine
+    with _engine_lock:                      # first requests can arrive together; load the indices and models once
+        if _engine is None:
+            from .engine import QueryEngine
+            _engine = QueryEngine(faiss_tag=os.environ.get("LAWLINE_FAISS_TAG", "base"),
+                                  embed_model=os.environ.get("LAWLINE_EMBED_MODEL", None) or __import__("lawline.config", fromlist=["BASE_EMBEDDING_MODEL"]).BASE_EMBEDDING_MODEL)
     return _engine
 
 

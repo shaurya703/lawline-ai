@@ -1,33 +1,54 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { CalendarClock } from "lucide-react";
 import { api, type LimRow } from "@/lib/api";
 import { useFetch } from "@/lib/hooks";
-import { Card, ErrorBox, Input, PageHeader, Skeleton } from "@/components/shell/ui";
-import { Chart, C } from "@/lib/plotly";
+import { Callout, Caption, Card, ErrorBox, Field, Input, Page, Section, Skeleton, Tag } from "@/components/ui";
+import { Chart, C, PALETTE } from "@/lib/plotly";
+
 const today = () => new Date().toISOString().slice(0, 10);
+type Band = { id: string; label: string; tone: "bad" | "warn" | "ok" | "neutral"; color: string };
+/** Urgency bands. The table states the band in words; the chart uses the matching colour. */
+const BANDS: Band[] = [
+  { id: "expired", label: "Expired", tone: "bad", color: C.danger },
+  { id: "soon", label: "Under 15 days", tone: "bad", color: C.warning },
+  { id: "near", label: "15 to 59 days", tone: "warn", color: PALETTE[3] },
+  { id: "later", label: "60 days or more", tone: "ok", color: C.success },
+  { id: "none", label: "No fixed period", tone: "neutral", color: C.muted },
+];
+const band = (x: LimRow) => BANDS[!x.days || x.days_left === undefined ? 4 : x.days_left < 0 ? 0 : x.days_left < 15 ? 1 : x.days_left < 60 ? 2 : 3];
+const left = (x: LimRow) => !x.days || x.days_left === undefined ? "No fixed period" : x.days_left < 0 ? `Expired ${-x.days_left} ${x.days_left === -1 ? "day" : "days"} ago` : x.days_left === 0 ? "Due today" : `${x.days_left} ${x.days_left === 1 ? "day" : "days"} left`;
+const fmt = (d?: string) => d ? new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+
 export default function Limitation() {
   const [start, setStart] = useState(today()); const [q, setQ] = useState("");
   const r = useFetch(() => api.get<{ today: string; rows: LimRow[] }>(`/limitation?start=${start}`), [start]);
   const rows = (r.data?.rows ?? []).filter(x => !q || (x.matter + x.basis).toLowerCase().includes(q.toLowerCase()));
-  const col = (d?: number) => d === undefined ? C.muted : d < 0 ? C.danger : d < 15 ? "#ff9f43" : d < 60 ? C.warning : C.success;
   return (
-    <div className="space-y-6">
-      <PageHeader eyebrow="Deadlines" title="Limitation Clock" desc="Enter the date of the cause of action (the memo, the breach, the order). Every limitation period is computed from it, colour-coded by urgency. Indicative only — court holidays, condonation and s.4–s.15 exclusions are not applied." />
-      <Card className="grid gap-3 p-5 md:grid-cols-[220px_1fr]"><label className="text-xs text-muted">Start / cause-of-action date<Input type="date" value={start} onChange={e => setStart(e.target.value)} className="mt-1" /></label><label className="text-xs text-muted">Filter<Input value={q} onChange={e => setQ(e.target.value)} placeholder="cheque, appeal, RTI, consumer…" className="mt-1" /></label></Card>
+    <Page title="Limitation Clock" desc="Enter the date the cause of action arose: the bank memo, the breach, the order. Every limitation period is counted from that date and compared with today.">
+      <Card className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+        <Field label="Date of the cause of action"><Input type="date" value={start} onChange={e => setStart(e.target.value)} /></Field>
+        <Field label="Filter matters"><Input value={q} onChange={e => setQ(e.target.value)} placeholder="cheque, appeal, RTI, consumer…" /></Field>
+      </Card>
+      <Callout tone="warn">Indicative only. Court holidays, condonation of delay and the exclusions in sections 4 to 15 of the Limitation Act are not applied.</Callout>
       {r.error && <ErrorBox error={r.error} />}
-      {!r.data ? <Skeleton className="h-96" /> : (<>
-        <Card className="p-4"><div className="font-mono text-[10px] uppercase tracking-[0.14em] text-primary/80">Days remaining</div>
-          <Chart height={Math.max(260, rows.length * 22)} data={[{ type: "bar", orientation: "h", y: rows.map(x => x.matter.slice(0, 42)), x: rows.map(x => x.days_left ?? 0), marker: { color: rows.map(x => col(x.days_left)) }, text: rows.map(x => x.deadline ?? "no fixed limit"), textposition: "outside", hovertemplate: "%{y}<br>%{x} days · due %{text}<extra></extra>" }]} layout={{ margin: { l: 260, r: 90, t: 10, b: 30 }, xaxis: { title: { text: "days left (negative = expired)" } }, yaxis: { autorange: "reversed" } }} /></Card>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {rows.map((x, i) => <motion.div key={x.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 12) * .04 }}>
-            <Card className="h-full p-4" glow><div className="flex items-start justify-between gap-2"><div className="font-semibold text-white">{x.matter}</div><CalendarClock className="h-4 w-4 shrink-0" style={{ color: col(x.days_left) }} /></div>
-              <div className="mt-2 font-display text-2xl tabular-nums" style={{ color: col(x.days_left), textShadow: `0 0 14px ${col(x.days_left)}66` }}>{x.days ? (x.days_left! < 0 ? `${-x.days_left!}d ago` : `${x.days_left}d`) : "—"}</div>
-              <div className="font-mono text-[10px] text-muted">{x.days ? `${x.days} days · due ${x.deadline}` : "no fixed period (laches applies)"}</div>
-              <div className="mt-2 text-xs text-muted">from {x.from}</div><div className="mt-1 font-mono text-[10px] text-primary">{x.basis}</div>
-            </Card></motion.div>)}
-        </div>
+      {!r.data ? !r.error && <Skeleton className="h-96" /> : !rows.length ? <Caption className="py-8 text-center">No matter matches that filter.</Caption> : (<>
+        <Section title="Days remaining" desc="Counted from today. A bar to the left of zero is a period that has already run out.">
+          <Chart height={Math.max(260, rows.length * 26 + 60)} data={[{ type: "bar", orientation: "h", y: rows.map(x => x.matter.slice(0, 44)), x: rows.map(x => x.days_left ?? 0), marker: { color: rows.map(x => band(x).color) }, text: rows.map(x => x.deadline ? fmt(x.deadline) : "no fixed period"), textposition: "outside", cliponaxis: false, hovertemplate: "%{y}<br>%{x} days · %{text}<extra></extra>" }]}
+            layout={{ margin: { l: 280, r: 110, t: 8, b: 44 }, xaxis: { showgrid: true, title: { text: "days left" } }, yaxis: { autorange: "reversed", showgrid: false } }} />
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-ink-3">{BANDS.map(b => <li key={b.id} className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" style={{ background: b.color }} aria-hidden />{b.label}</li>)}</ul>
+        </Section>
+        <Section flush title="Deadlines" desc={`${rows.length} ${rows.length === 1 ? "matter" : "matters"}, counted from ${fmt(start)}.`}>
+          <div className="overflow-x-auto"><table className="tbl"><thead><tr><th className="pl-5">Matter</th><th>Runs from</th><th className="text-right">Period</th><th>Deadline</th><th>Status</th><th className="pr-5">Basis</th></tr></thead>
+            <tbody>{rows.map(x => { const b = band(x); return (
+              <tr key={x.id}>
+                <td className="pl-5 font-medium text-ink">{x.matter}</td>
+                <td className="text-ink-2">{x.from}</td>
+                <td className="mono text-right">{x.days ? `${x.days} days` : "none"}</td>
+                <td className="mono whitespace-nowrap">{x.deadline ? fmt(x.deadline) : "laches applies"}</td>
+                <td className="whitespace-nowrap"><Tag tone={b.tone} className="num">{left(x)}</Tag></td>
+                <td className="pr-5 text-ink-3">{x.basis}</td>
+              </tr>); })}</tbody></table></div>
+        </Section>
       </>)}
-    </div>
+    </Page>
   );
 }

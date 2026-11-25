@@ -1,11 +1,17 @@
 """Sentence-transformer wrapper with device auto-selection (MPS / CUDA / CPU)."""
 from __future__ import annotations
+import threading
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
 from ..config import BASE_EMBEDDING_MODEL
 
 _CACHE: dict[str, "Embedder"] = {}
+# One forward pass at a time, shared by the embedder and the cross-encoder. FastAPI runs sync routes on a thread pool,
+# and two threads driving the Metal (MPS) backend at once kill the process (segfault or a failed
+# IOGPUMetalCommandBuffer assertion). Interleaving passes on a single GPU would not be faster anyway.
+INFERENCE_LOCK = threading.Lock()
+_LOAD_LOCK = threading.Lock()
 
 
 def pick_device() -> str:
@@ -30,17 +36,20 @@ class Embedder:
         self.use_prefix = "bge" in model_name.lower()
 
     def encode_passages(self, texts: list[str], show_progress: bool = False) -> np.ndarray:
-        return self.model.encode(texts, batch_size=self.batch_size, normalize_embeddings=True,
-                                 convert_to_numpy=True, show_progress_bar=show_progress).astype("float32")
+        with INFERENCE_LOCK:
+            return self.model.encode(texts, batch_size=self.batch_size, normalize_embeddings=True,
+                                     convert_to_numpy=True, show_progress_bar=show_progress).astype("float32")
 
     def encode_queries(self, texts: list[str]) -> np.ndarray:
         if self.use_prefix:
             texts = [self.QUERY_PREFIX + t for t in texts]
-        return self.model.encode(texts, batch_size=self.batch_size, normalize_embeddings=True,
-                                 convert_to_numpy=True).astype("float32")
+        with INFERENCE_LOCK:
+            return self.model.encode(texts, batch_size=self.batch_size, normalize_embeddings=True,
+                                     convert_to_numpy=True).astype("float32")
 
 
 def get_embedder(model_name: str = BASE_EMBEDDING_MODEL) -> Embedder:
-    if model_name not in _CACHE:
-        _CACHE[model_name] = Embedder(model_name)
-    return _CACHE[model_name]
+    with _LOAD_LOCK:
+        if model_name not in _CACHE:
+            _CACHE[model_name] = Embedder(model_name)
+        return _CACHE[model_name]

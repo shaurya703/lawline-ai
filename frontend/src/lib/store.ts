@@ -19,9 +19,16 @@ export const pin = (i: Omit<CaseItem, "id" | "at">) => { const item: CaseItem = 
 export const unpin = (id: string) => files.set(s => ({ items: s.items.filter(i => i.id !== id) }));
 export const annotate = (id: string, note: string) => files.set(s => ({ items: s.items.map(i => i.id === id ? { ...i, note } : i) }));
 
-export type Settings = { accent: "cyan" | "violet" | "amber" | "emerald" | "rose"; motion: "full" | "reduced"; typewriter: boolean; voice: boolean; autoSpeak: boolean; style: string; lang: string; density: "comfortable" | "compact"; apiBase: string; rerank: boolean; sidebar: "expanded" | "rail" };
-export const settings = makeStore<Settings>("lawline.settings", { accent: "cyan", motion: "full", typewriter: true, voice: true, autoSpeak: false, style: "Plain English", lang: "—", density: "comfortable", apiBase: "", rerank: true, sidebar: "expanded" });
-export function applySettings(s: Settings) { const r = document.documentElement; r.dataset.accent = s.accent; r.dataset.density = s.density; r.style.setProperty("--motion", s.motion === "reduced" ? "0" : "1"); }
+export const ACCENTS = ["oxblood", "navy", "forest", "plum", "slate"] as const;
+export type Settings = { accent: (typeof ACCENTS)[number]; motion: "full" | "reduced"; typewriter: boolean; voice: boolean; autoSpeak: boolean; style: string; lang: string; density: "comfortable" | "compact"; apiBase: string; rerank: boolean; sidebar: "expanded" | "hidden" };
+export const settings = makeStore<Settings>("lawline.settings", { accent: "oxblood", motion: "full", typewriter: true, voice: true, autoSpeak: false, style: "Plain English", lang: "—", density: "comfortable", apiBase: "", rerank: true, sidebar: "expanded" });
+// Values saved by the previous interface (neon accents, icon rail) fall back to the defaults.
+if (!ACCENTS.includes(settings.get().accent)) settings.set({ accent: "oxblood" });
+if (settings.get().sidebar !== "expanded" && settings.get().sidebar !== "hidden") settings.set({ sidebar: "expanded" });
+export function applySettings(s: Settings) { const r = document.documentElement; r.dataset.accent = s.accent; r.dataset.density = s.density; r.dataset.motion = s.motion; }
+
+/** Which sidebar groups are expanded. The group holding the current page is always shown open. */
+export const navState = makeStore<{ open: Record<string, boolean> }>("lawline.nav", { open: {} });
 
 export type Toast = { id: number; text: string; kind?: "ok" | "warn" | "err" };
 export const toasts = makeStore<{ list: Toast[] }>(null, { list: [] });

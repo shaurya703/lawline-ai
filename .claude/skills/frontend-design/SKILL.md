@@ -1,72 +1,73 @@
 ---
 name: frontend-design
-description: LawLine AI design system — use whenever building or editing UI (React/Vite front-end in frontend/, Streamlit pages in lawline/ui/). Defines type scale, 8px spacing grid, color tokens, component patterns, motion rules, and explicit anti-"generic AI" guidance.
+description: LawLine AI design system for the React front-end in frontend/. Use whenever building or editing UI there. Defines tokens, type, the component kit, page patterns, chart rules and what to avoid.
 ---
 
 # LawLine AI — Frontend Design Skill
 
-LawLine is a legal-research "command center": dense information, high trust, dark interface with restrained neon accents.
-Every UI decision should read as **precise, evidentiary, calm** — not flashy. When in doubt, remove an effect.
+LawLine is a legal research tool. The interface should read like a well-set law report: quiet, legible, evidentiary.
+One light theme. When in doubt, remove something.
 
-## 1. Tokens (never use raw hex in components — import from `frontend/src/styles/tokens.css` / `lawline/ui/theme.py`)
+The Streamlit app (`lawline/ui/`) is separate and keeps its own theme in `lawline/ui/theme.py`.
 
-### Color
+## 1. Tokens (`frontend/src/styles/globals.css`)
+
+Use the Tailwind classes generated from these; never write a hex value in a component.
+
 | Token | Value | Use |
 |---|---|---|
-| `--bg` | `#070b14` | page background |
-| `--bg-elev` | `#0e1628` | panels, cards (72% alpha glass allowed: `rgba(14,22,40,.72)`) |
-| `--border` | `rgba(0,229,255,.18)` | 1px borders only |
-| `--text` | `#dfe7f5` | body text |
-| `--text-muted` | `#8b9bb4` | labels, captions, metadata |
-| `--primary` | `#00e5ff` | one accent per view: active state, key metric, primary CTA |
-| `--secondary` | `#7c4dff` | secondary data series, KG/entity badges |
-| `--success` | `#2ee6a6` | cited / verified / online |
-| `--warning` | `#ffd166` | lexical/BM25 series, caution |
-| `--danger` | `#ff4d6d` | errors, destructive |
-Rules: max **one** saturated accent per component; accents on text only for numbers/labels ≤ 2 words; long text is always `--text`/`--text-muted`. Contrast ≥ 4.5:1 for body, ≥ 3:1 for large display text.
+| `canvas` | `#f6f5f1` | page background |
+| `surface` | `#ffffff` | cards, sidebar, inputs |
+| `sunken` | `#faf9f6` | hover rows, inset areas |
+| `line` / `line-strong` | `#e5e2da` / `#cdc9be` | hairlines / control borders |
+| `ink` / `ink-2` / `ink-3` | `#16181d` / `#454a54` / `#6b717c` | text: primary / secondary / captions |
+| `accent` (+ `-soft`, `-strong`) | oxblood `#7b1e2b` | brand mark, links, active nav item, citation markers. User-selectable in Settings. |
+| `ok` `warn` `bad` `info` (+ `-soft`) | | status only, always with an icon or a word |
 
-### Typography (modular scale 1.25, base 16px)
-| Role | Size / line | Weight | Family |
-|---|---|---|---|
-| display | 39px / 1.1 | 700 | Orbitron (page titles only, uppercase, letter-spacing .04em) |
-| h1 | 31px / 1.2 | 700 | Orbitron |
-| h2 | 25px / 1.25 | 600 | Inter |
-| h3 | 20px / 1.3 | 600 | Inter |
-| body | 16px / 1.6 | 400 | Inter |
-| small | 13px / 1.5 | 400 | Inter |
-| caption / mono | 12px / 1.4 | 400 | JetBrains Mono (ids, latency, citations `[3]`, status lines) |
-Never introduce sizes outside this scale. Max line length for prose: 72ch. Numbers in KPIs use `font-variant-numeric: tabular-nums`.
+Primary buttons are ink, not accent. There are no gradients, glows, blurs or shadows at rest; `shadow-pop` is for overlays and the Counsel composer only.
 
-### Spacing — 8px grid
-`--s1 4px` (icon gaps only) · `--s2 8px` · `--s3 16px` · `--s4 24px` · `--s5 32px` · `--s6 48px` · `--s7 64px`.
-Card padding 24px; gaps between cards 16px; section spacing 48px; page gutter 32px (16px < 640px).
+## 2. Type
 
-### Radius & elevation
-Radius: controls 10px, cards 14px, hero panels 18px, pills 999px. Shadow only on hover/focus: `0 12px 40px rgba(0,229,255,.12)`. No drop shadows at rest.
+| Role | Face | Size |
+|---|---|---|
+| Page title | Newsreader 500 | 28px |
+| Source text (statutes, judgments, quotations) | Newsreader | `.statute` 17px, `.statute-sm` 15px |
+| Interface | IBM Plex Sans | 14px base; 13px dense; 15px reading |
+| Identifiers, figures in tables | IBM Plex Mono | 11–12px, tabular |
 
-## 2. Component patterns
-**Button**: height 40px, padding 0 16px, radius 10px, 1px `--border`, label 14px/600. States: default (glass bg) → hover (border `--primary`, glow) → active (translateY(1px)) → focus-visible (2px outline `--primary`, offset 2px) → disabled (opacity .45, no hover) → loading (spinner replaces label, width fixed). Primary = filled gradient `primary→secondary` at 16% alpha; destructive = `--danger` border. One primary per view.
-**Card**: 24px padding, eyebrow label (caption, muted, uppercase, tracking .12em) → value/title → supporting mono line. Hover lifts 2px. Cards never nest more than one level.
-**Citation chip**: `[n]` mono, pill, `--success` border when the answer cites it, neutral otherwise. Clicking scrolls to / expands the passage.
-**Source badge**: pill with retriever name (FAISS = primary, BM25 = warning, KG = secondary, KG-slot = success).
-**Forms**: label above control (small, 600), 8px gap, control height 40px, help text caption muted, error text `--danger` with icon, never placeholder-as-label. Group related fields in 2-column grid ≥ 768px.
-**Chat message**: assistant and user both glass cards; assistant gets the scale avatar; passages live in a collapsed expander under the message, never inline.
-**Charts (Plotly/Recharts)**: transparent background, gridlines `rgba(139,155,180,.12)`, series order primary → secondary → warning → success, axis titles small muted, tooltips elevated bg with primary border.
-**Empty / loading / error states are mandatory** for every data view: skeleton (not spinner) for content > 300ms; error shows what failed and a retry.
+The rule that carries the design: **interface text is sans, source text is serif.** Model-written prose (`.prose-ll`) is sans.
+No uppercase tracked "eyebrow" labels. Sentence case everywhere.
 
-## 3. Motion (framer-motion)
-Durations: micro 120ms, standard 200ms, panels 280ms; easing `[0.2, 0.8, 0.2, 1]`. Animate opacity/transform only. Page enter: fade + 8px rise, stagger children 40ms. Respect `prefers-reduced-motion` (disable transforms). No looping animations except the status pulse (1.6s) and hero conic sweep — and never more than one loop visible.
+## 3. Kit (`frontend/src/components/ui.tsx`)
 
-## 4. Avoid the generic-AI aesthetic
-- No purple-to-pink gradients, no centered hero with three equal feature cards, no emoji bullet lists in UI copy, no "✨ Powered by AI" labels.
-- No stock glassmorphism everywhere: glass only on hero and cards over the grid background; inputs and tables are flat.
-- No default Inter-on-white layouts; no Tailwind default palette colors (`blue-500` etc.).
-- Text: specific, legal, concrete ("5 passages · 2 cited · 1.2 s") — never "Unlock insights", "Seamless", "Elevate".
-- Density over whitespace: this is a research tool; target ≥ 3 meaningful data points above the fold.
-- Don't animate everything; one motion per interaction.
-- Accessibility is not optional: keyboard focus rings, `aria-label` on icon buttons, semantic headings in order, live region for streaming answers.
+- **Layout**: `Page` (one per route: title, one-sentence description, actions on the title line), `Card`, `Section` (titled card), `Workbench` (input left, result right), `H3`, `Caption`.
+- **Controls**: `Field` (label above control), `Input`, `Textarea`, `Select`, `Button` (`primary` once per page), `IconButton` (label doubles as tooltip), `UploadButton`, `Chip` (examples and presets), `Toggle`, `Tabs` (underline).
+- **Display**: `Tag` (toned), `Source` (retriever dot + name), `Stat` in a `StatStrip` (never a grid of metric cards), `Meter` (0–5), `Progress` (0–1), `Bullets`, `Callout`, `Skeleton`, `ErrorBox` (pass `retry`), `Empty`.
+- **Overlays**: `Drawer`, `Modal`, `Toasts`.
+- **Shared**: `PinButton`, `CopyButton`, `Passages`. Tables use `className="tbl"`.
 
-## 5. Implementation notes
-- React: tokens via CSS variables in `frontend/src/styles/tokens.css`; components in `frontend/src/components/`; no inline hex.
-- Streamlit: tokens in `lawline/ui/theme.py` (`ACCENT`, `ACCENT2`, …) and `CSS` — extend, don't fork.
-- Legal disclaimer line ("This is information, not legal advice.") appears once per answer, caption size, never hidden.
+## 4. Page patterns
+
+- Paste-and-run modules (Analyzer, Summarizer, Timeline, Arena, Verifier, Drafting) all use `Workbench`: form on the left, `Empty` → `Skeleton` → result on the right.
+- Lookup modules put the query in a `Card` at the top and results below.
+- Every data view has loading, empty and error states. Errors offer a retry.
+- A page shows one primary action. Options that are rarely changed sit quietly next to it, not in their own cards.
+- Navigation lives in `components/shell/nav.ts`: four groups plus Overview, Case Files and Settings. Add a module there and it appears in the sidebar, the overview, the landing page and the command palette.
+
+## 5. Charts (`frontend/src/lib/plotly.tsx`)
+
+- Colours come from `C`, `PALETTE` (fixed order) and `SEQ` (one-hue ramp). The brand accent is not a chart colour.
+- Identity is stable everywhere: dense/FAISS `C.primary`, BM25 `C.warning`, graph `C.secondary`, baseline `C.muted`, the LawLine system `C.fg`.
+- `layout()` merges axis, legend, polar and scene overrides with the defaults. Category x-axes have no gridlines; horizontal bars pass `xaxis: { showgrid: true }, yaxis: { showgrid: false }`.
+- A chart sits in a `Section` whose title says what is measured and whose description says what it shows. Offer a table view for anything a reader may want to quote.
+- Text never wears a series colour.
+
+## 6. Avoid
+
+Dark neon dashboards, glassmorphism, animated backgrounds, 3D heroes, tilt and glow on hover, gradient text, counters that tick up,
+gauges where a number will do, rainbow accents per item, "new" badges, emoji, marketing verbs, and more than one saturated colour in a component.
+
+## 7. Accessibility
+
+Visible focus ring on everything; `aria-label` on icon buttons; status never by colour alone; headings in order; `aria-live` on streamed answers;
+reduced motion honoured through both the OS setting and Settings → Transitions. The legal disclaimer stays visible in the sidebar and the landing footer.

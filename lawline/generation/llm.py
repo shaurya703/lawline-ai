@@ -49,26 +49,29 @@ class LLMClient:
     def available(self) -> list[str]:
         return [n for n, c in (("groq", self._groq), ("gemini", self._gemini)) if c]
 
-    def _call_groq(self, system: str, user: str) -> LLMResponse:
+    def _call_groq(self, system: str, user: str, max_tokens: int | None = None, json_mode: str | None = None) -> LLMResponse:
         t = time.perf_counter()
+        extra = {"response_format": {"type": "json_object"}} if json_mode == "object" else {}   # Groq's JSON mode is object-only
         r = self._groq.chat.completions.create(
-            model=GROQ_MODEL, temperature=self.temperature, max_tokens=self.max_tokens,
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}])
+            model=GROQ_MODEL, temperature=self.temperature, max_tokens=max_tokens or self.max_tokens,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}], **extra)
         u = getattr(r, "usage", None)
         return LLMResponse(r.choices[0].message.content.strip(), "groq", GROQ_MODEL, (time.perf_counter() - t) * 1000,
                            getattr(u, "prompt_tokens", None), getattr(u, "completion_tokens", None))
 
-    def _call_gemini(self, system: str, user: str) -> LLMResponse:
+    def _call_gemini(self, system: str, user: str, max_tokens: int | None = None, json_mode: str | None = None) -> LLMResponse:
         t = time.perf_counter()
         last = None
+        config = {"temperature": self.temperature, "max_output_tokens": max_tokens or self.max_tokens,
+                  "thinking_config": {"thinking_level": "minimal"}}
+        if json_mode:
+            config["response_mime_type"] = "application/json"
         for model in self._gemini_chain:
             if model in self._exhausted:
                 continue
             try:
                 r = self._gemini.models.generate_content(
-                    model=model, contents=f"{system}\n\n{user}",
-                    config={"temperature": self.temperature, "max_output_tokens": self.max_tokens,
-                            "thinking_config": {"thinking_level": "minimal"}})
+                    model=model, contents=f"{system}\n\n{user}", config=config)
                 if not getattr(r, "text", None):
                     raise RuntimeError(f"{model}: empty response")
                 break
@@ -84,7 +87,10 @@ class LLMClient:
                            getattr(getattr(r, "usage_metadata", None), "prompt_token_count", None),
                            getattr(getattr(r, "usage_metadata", None), "candidates_token_count", None))
 
-    def complete(self, system: str, user: str, retries: int = 5) -> LLMResponse:
+    def complete(self, system: str, user: str, retries: int = 5, max_tokens: int | None = None,
+                 json_mode: str | None = None) -> LLMResponse:
+        """max_tokens overrides the client default for this call only (the client is shared across request threads).
+        json_mode ("object" or "array") asks the backend for syntactically valid JSON instead of free text."""
         errors = []
         order = [("groq", self._call_groq, self._groq), ("gemini", self._call_gemini, self._gemini)]
         if self.backend == "gemini":
@@ -94,7 +100,7 @@ class LLMClient:
                 continue
             for attempt in range(retries + 1):
                 try:
-                    resp = fn(system, user)
+                    resp = fn(system, user, max_tokens, json_mode)
                     resp.errors = list(errors)
                     return resp
                 except Exception as e:   # rate limits, network, auth
