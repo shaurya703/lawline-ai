@@ -8,12 +8,11 @@ Results -> outputs/results/answer_eval/
 """
 from __future__ import annotations
 import argparse, ast, json, random, re, time
-from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 from ..config import RESULTS_DIR, DATA_RAW, RetrievalConfig, JUDGE_MODEL, GEMINI_MODEL, CORPUS_VERSION
 from ..generation.llm import LLMClient
-from ..generation.prompts import SYSTEM_PROMPT, USER_TEMPLATE, CLOSED_BOOK_SYSTEM, format_context
+from ..generation.prompts import CLOSED_BOOK_SYSTEM, format_context
 from .gold import load_gold
 
 SEED = 13

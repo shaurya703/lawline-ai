@@ -2,7 +2,6 @@
 Used only to back-fill sections absent from the other IPC sources (general part: definitions, general exceptions, abetment…)."""
 from __future__ import annotations
 import re
-from pathlib import Path
 from ..config import DATA_RAW
 
 TXT = DATA_RAW / "harshitv804__IPC/ipc.txt"

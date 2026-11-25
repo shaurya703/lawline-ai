@@ -43,11 +43,21 @@ class HybridRetriever:
         self.kg = LegalKG.load(index_dir / "kg")
         self.reranker = get_reranker() if load_reranker else None
         self._type_masks: dict[tuple, tuple] = {}
+        self.doc_types = frozenset(c.doc_type for c in self.chunks)          # the only values a doc_types filter can name
+        if self.faiss.index.d != self.embedder.dim:
+            raise ValueError(f"faiss_{faiss_tag} holds {self.faiss.index.d}-dimensional vectors but {embed_model} produces "
+                             f"{self.embedder.dim}: LAWLINE_FAISS_TAG and LAWLINE_EMBED_MODEL do not belong together")
         # The chunk file and the indices are built together and must be fetched together. A host that mixes two
         # versions (say, new chunks with an older FAISS index) still starts, but retrieves from a partial corpus.
-        self.index_sizes = {"chunks": len(self.chunks), "faiss": len(self.faiss.ids), "bm25": len(self.bm25.ids)}
-        if len(set(self.index_sizes.values())) > 1:
-            logging.getLogger("lawline").warning("chunk file and indices differ in size, so they were not built together: %s", self.index_sizes)
+        self.index_sizes = {"chunks": len(self.chunks), "faiss": self.faiss.index.ntotal, "bm25": len(self.bm25.ids)}
+        unknown = {"faiss": sum(i not in self.by_id for i in self.faiss.ids), "bm25": sum(i not in self.by_id for i in self.bm25.ids),
+                   "kg": sum(i not in self.by_id for ids in self.kg.node_chunks.values() for i in ids)}
+        if len(set(self.index_sizes.values())) > 1 or any(unknown.values()):
+            logging.getLogger("lawline").warning("chunk file and indices were not built together: sizes %s, ids missing from the chunk file %s",
+                                                 self.index_sizes, unknown)
+        # Each index keeps its own copy of every chunk id (16 MB each at 204k chunks); point them at the strings the chunks hold.
+        for ids in (self.faiss.ids, self.bm25.ids, *self.kg.node_chunks.values()):
+            ids[:] = [self.by_id[i].chunk_id if i in self.by_id else i for i in ids]
 
     def type_masks(self, types: tuple):
         """(bm25 boolean mask, faiss allowed-id array) for a document-type restriction; cached."""
@@ -69,7 +79,9 @@ class HybridRetriever:
             route = "narrative"
         rankings, timings = {}, {}
         timings["route"] = 1.0 if route == "narrative" else 0.0
-        types = tuple(cfg.doc_types)
+        types = tuple(sorted(set(cfg.doc_types) & self.doc_types))    # canonical, so junk, duplicates and order cannot mint cache entries
+        if cfg.doc_types and not types:                               # the filter names no document type this corpus holds
+            return RetrievalResult([], timings)
         bm_mask, fa_allowed = self.type_masks(types) if types else (None, None)
         def keep(ranked):                               # KG results are filtered after the fact (cheap, small)
             if not types:

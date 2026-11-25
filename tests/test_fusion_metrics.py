@@ -7,7 +7,7 @@ def test_rrf_prefers_consensus():
     fused = rrf(r, k=60)
     ids = [d for d, _ in fused]
     assert ids[0] in ("d1", "d2") and set(ids[:2]) == {"d1", "d2"}
-    assert ids.index("d9") > ids.index("d3") or True
+    assert ids == ["d2", "d1", "d9", "d3"]          # d9 is second in one list (1/62), d3 third in the other (1/63)
     assert len(fused) == 4
 
 

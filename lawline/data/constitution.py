@@ -15,8 +15,8 @@ def _art_key(n: str) -> tuple[int, str]:
     return int(m.group(1)), m.group(2)
 
 
-def clean_pages(raw: str) -> tuple[str, dict[str, str]]:
-    """Remove footnote blocks, page headers/numbers; track the current PART for each article."""
+def clean_pages(raw: str) -> str:
+    """Remove footnote blocks and page headers/numbers."""
     out, skipping = [], False
     for line in raw.split("\n"):
         if "\x0c" in line:                       # new page: header line like "7   THE CONSTITUTION OF INDIA"
@@ -33,7 +33,7 @@ def clean_pages(raw: str) -> tuple[str, dict[str, str]]:
     txt = "\n".join(out)
     txt = re.sub(r"\b\d\[", "[", txt)            # footnote markers like 1[
     txt = re.sub(r"\]\s*\d(?=\s)", "]", txt)
-    return txt, {}
+    return txt
 
 
 def parse_constitution(path: Path = SRC) -> list[Document]:
@@ -41,7 +41,7 @@ def parse_constitution(path: Path = SRC) -> list[Document]:
     start = re.search(r"\n\s*1\.\s*Name and territory of the Union\.\s*[—–]", raw)
     end = re.search(r"\n\s*FIRST SCHEDULE", raw[start.start():])
     body = raw[start.start(): start.start() + (end.start() if end else len(raw))]
-    body, _ = clean_pages(body)
+    body = clean_pages(body)
     # track parts
     part_pos = [(m.start(), m.group(1).strip()) for m in re.finditer(r"^\s*(PART [IVXLC]+[A-Z]?)\b.*$", body, re.M)]
     heads = []

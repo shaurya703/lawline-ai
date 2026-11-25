@@ -8,7 +8,6 @@ import faiss
 
 # faiss-cpu and torch ship separate OpenMP runtimes; on macOS a multi-threaded faiss search after torch
 # inference segfaults. A single thread is plenty for an exact IndexFlatIP over ~10^5 vectors (~1 ms).
-from .embedder import Embedder
 
 
 class FaissIndex:
@@ -32,6 +31,8 @@ class FaissIndex:
         q = np.ascontiguousarray(query_vecs, dtype="float32")
         if q.ndim == 1:
             q = q[None, :]
+        if allowed is not None and len(allowed) == 0:                                # nothing is allowed, and faiss rejects k == 0
+            return [[] for _ in range(len(q))]
         if allowed is not None:
             params = faiss.SearchParameters(sel=faiss.IDSelectorBatch(np.asarray(allowed, dtype="int64")))
             scores, idxs = self.index.search(q, min(k, len(allowed)), params=params)
@@ -42,14 +43,19 @@ class FaissIndex:
     def save(self, path: Path):
         path = Path(path); path.mkdir(parents=True, exist_ok=True)
         faiss.write_index(self.index, str(path / "index.faiss"))
-        json.dump(self.ids, open(path / "ids.json", "w"))
+        with open(path / "ids.json", "w", encoding="utf-8") as f:
+            json.dump(self.ids, f)
 
     @classmethod
     def load(cls, path: Path) -> "FaissIndex":
         path = Path(path)
         obj = cls.__new__(cls)
         obj.index = faiss.read_index(str(path / "index.faiss"))
-        obj.ids = json.load(open(path / "ids.json"))
+        with open(path / "ids.json", encoding="utf-8") as f:
+            obj.ids = json.load(f)
+        if obj.index.ntotal != len(obj.ids):
+            raise ValueError(f"{path}: index.faiss holds {obj.index.ntotal} vectors but ids.json lists {len(obj.ids)} ids; "
+                             "the two files come from different builds")
         return obj
 
     def __len__(self):

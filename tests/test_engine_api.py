@@ -1,11 +1,9 @@
 """Engine / API tests with a stub retriever so they run without the full indices or network."""
 import json
-from dataclasses import dataclass
 from fastapi.testclient import TestClient
 from lawline.config import RetrievalConfig
 from lawline.retrieval.hybrid import RetrievalResult, RetrievedPassage
 from lawline.engine import QueryEngine
-from lawline.generation.llm import extractive_answer
 
 
 class StubRetriever:
@@ -61,3 +59,29 @@ def test_api_endpoints(tiny_chunks, monkeypatch):
 def test_doc_type_filter_config():
     cfg = RetrievalConfig(doc_types=("statute",))
     assert cfg.doc_types == ("statute",) and cfg.name == "faiss+bm25+kg+rerank"
+
+
+def test_hybrid_retriever_doc_type_filter(tiny_chunks, tiny_corpus_path, tmp_path, monkeypatch):
+    """The real retriever over tiny indices, with a stub encoder and no reranker."""
+    import numpy as np
+    from lawline.retrieval import hybrid
+    from lawline.index.faiss_index import FaissIndex
+    from lawline.index.bm25_index import BM25Index
+    from lawline.index.knowledge_graph import LegalKG
+    ids = [c.chunk_id for c in tiny_chunks]
+    vecs = np.random.default_rng(0).normal(size=(len(ids), 8)).astype("float32"); vecs /= np.linalg.norm(vecs, axis=1, keepdims=True)
+    FaissIndex.build(ids, vecs).save(tmp_path / "faiss_base"); BM25Index.build(ids, [c.text for c in tiny_chunks]).save(tmp_path / "bm25")
+    LegalKG.build(tiny_corpus_path, tiny_chunks).save(tmp_path / "kg")
+    stub = type("StubEmbedder", (), {"dim": 8, "encode_queries": lambda self, texts: vecs[:1]})()
+    monkeypatch.setattr(hybrid, "get_embedder", lambda name: stub)
+    r = hybrid.HybridRetriever(index_dir=tmp_path, chunks=tiny_chunks, load_reranker=False)
+    q = "punishment for murder under Article 21"
+    assert {p.chunk.doc_type for p in r.retrieve(q).passages} == {"statute", "case"}
+    assert {p.chunk.doc_type for p in r.retrieve(q, RetrievalConfig(doc_types=("case",))).passages} == {"case"}
+    assert {p.chunk.doc_type for p in r.retrieve(q, RetrievalConfig(doc_types=("statute",))).passages} == {"statute"}
+    assert r.retrieve(q, RetrievalConfig(doc_types=("Statute",))).passages == []       # an unknown type matches nothing
+    both = r.retrieve(q, RetrievalConfig(doc_types=("statute", "case"))).passages
+    for i in range(20):
+        assert r.retrieve(q, RetrievalConfig(doc_types=("case", "statute", "case", f"x{i}"))).passages == both
+    assert sorted(r._type_masks) == [("case",), ("case", "statute"), ("statute",)]     # one mask per real filter, however many are asked for
+    assert r.faiss.ids[0] is r.chunks[0].chunk_id and r.bm25.ids[0] is r.chunks[0].chunk_id
