@@ -15,6 +15,9 @@ MODEL_DIR = OUT / "models"
 for _p in (DATA_PROCESSED, INDEX_DIR, RESULTS_DIR, FIG_DIR, MODEL_DIR):
     _p.mkdir(parents=True, exist_ok=True)
 
+# Bump when the corpus changes. Every evaluation records the version it ran on, and tables, figures and the app
+# label a result that was measured on an older corpus instead of presenting it as current.
+CORPUS_VERSION = "v2"
 CORPUS_PATH = DATA_PROCESSED / "corpus.jsonl"
 CHUNKS_PATH = DATA_PROCESSED / "chunks.jsonl"
 

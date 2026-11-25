@@ -1,6 +1,6 @@
 # The image only needs: pyproject.toml, README.md, lawline/,
 # data/processed/chunks.jsonl, outputs/indices/ and outputs/models/.
-# Everything else is build-context weight (374 MB -> ~87 MB).
+# Everything else is build-context weight.
 
 .git
 .github

@@ -40,6 +40,13 @@ def corpus_stats():
     return json.load(open(p)) if p.exists() else {}
 
 
+def older_corpus(meta_name: str) -> str:
+    """'v1' when the stored result behind `meta_name` was measured on an older corpus than the current one, else ''."""
+    from ..config import CORPUS_VERSION
+    v = (results(meta_name) or {}).get("corpus", CORPUS_VERSION)
+    return v if v != CORPUS_VERSION else ""
+
+
 @st.cache_data
 def gold_stats():
     p = DATA_PROCESSED / "gold_stats.json"

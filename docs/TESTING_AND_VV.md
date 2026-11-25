@@ -41,5 +41,5 @@ they run in seconds with no network and no prebuilt indices.
 
 ## 5. Known limitations
 * KG case→case citation edges rely on fuzzy title matching (precision-oriented thresholds).
-* Case-law coverage is SCR 2016 + Patna HC excerpts + 7 landmark judgments; not a complete reporter.
+* Case-law coverage is a sample (Supreme Court Reports 1950–2025, 100 judgments from each of 24 High Courts, Patna excerpts, 7 Phase-II landmarks); long judgments are shortened; not a complete reporter.
 * The LLM backend is a hosted API (Gemini); offline mode falls back to extractive answers.

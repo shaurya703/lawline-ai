@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
-import { api, type Analytics, type MapRow, type Stats } from "@/lib/api";
+import { api, measuredOn, type Analytics, type MapRow, type Stats } from "@/lib/api";
 import { useFetch } from "@/lib/hooks";
 import { activity, files } from "@/lib/store";
 import { Button, Card, ErrorBox, Input, Page, Section, Skeleton, Stat, StatStrip } from "@/components/ui";
@@ -11,7 +11,7 @@ import Pipeline from "@/components/Pipeline";
 
 const ROUTED = "routed: dense (narrative) | faiss+bm25+kg+rerank (question)";
 const TASKS = [["bns_qa", "BNS questions"], ["ipc_facts", "IPC fact patterns"], ["const_qa", "Constitution"], ["sc_case", "SC case retrieval"]] as const;
-const EXAMPLES = ["What is anticipatory bail under BNSS?", "What does Article 21 guarantee?", "Which section governs cheque bounce?", "What is the punishment for stalking?"];
+const EXAMPLES = ["What is anticipatory bail?", "What does Article 21 guarantee?", "What is the punishment for murder?", "What is the punishment for stalking?"];
 const codeOf = (act: string) => act.startsWith("Indian Penal") ? "IPC" : act.startsWith("Code") ? "CRPC" : "IEA";
 
 export default function Overview() {
@@ -38,7 +38,7 @@ export default function Overview() {
           <Stat label="Benchmark queries" value={Object.values(st.gold).reduce((n, g) => n + g.queries, 0).toLocaleString()} sub="held out · 4 tasks" />
           <Stat label="Recall@5" value={ft.length ? row(ROUTED, "macro", "R@5").toFixed(3) : "…"} sub={ft.length ? `BM25 alone ${row("bm25", "macro", "R@5").toFixed(3)}` : " "} />
           <Stat label="nDCG@10" value={ft.length ? row(ROUTED, "macro", "nDCG@10").toFixed(3) : "…"} sub={ft.length ? `BM25 alone ${row("bm25", "macro", "nDCG@10").toFixed(3)}` : " "} />
-          <Stat label="Bar exam accuracy" value={`${((ae?.aibe?.rag_acc ?? 0) * 100).toFixed(1)}%`} sub={`closed-book ${((ae?.aibe?.closed_book_acc ?? 0) * 100).toFixed(1)}%`} />
+          <Stat label="Bar exam accuracy" value={`${((ae?.aibe?.rag_acc ?? 0) * 100).toFixed(1)}%`} sub={`closed-book ${((ae?.aibe?.closed_book_acc ?? 0) * 100).toFixed(1)}%${measuredOn(st)}`} />
         </StatStrip>
       ) : <Skeleton className="h-[104px]" />}
 

@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from ..config import RESULTS_DIR, FIG_DIR
+from .make_tables import measured_on
 
 plt.rcParams.update({"font.size": 9, "axes.spines.top": False, "axes.spines.right": False, "figure.dpi": 160})
 ROUTED = "routed: dense (narrative) | faiss+bm25+kg+rerank (question)"
@@ -81,7 +82,7 @@ def fig_latency(tag="ft"):
         if "rag" in s:
             fig, ax = plt.subplots(figsize=(4.2, 2.4))
             parts = [("retrieval (hybrid+rerank)", s["rag"]["mean_retrieval_ms"]), ("LLM generation", s["rag"]["mean_generation_ms"])]
-            ax.barh([p for p, _ in parts], [v for _, v in parts]); ax.set_xlabel("mean ms per query"); ax.set_title("End-to-end latency breakdown")
+            ax.barh([p for p, _ in parts], [v for _, v in parts]); ax.set_xlabel("mean ms per query"); ax.set_title("End-to-end latency breakdown" + measured_on(RESULTS_DIR / "answer_eval" / "summary.json").replace(", ", " (") .replace("corpus", "corpus)"))
             fig.tight_layout(); fig.savefig(FIG_DIR / "latency_e2e.png"); plt.close(fig)
 
 
@@ -92,7 +93,7 @@ def fig_chunk_sweep():
     fig, ax = plt.subplots(figsize=(4.6, 2.8))
     for name, g in df.groupby("retriever"):
         ax.plot(g.chunk_words, g["R@5"], marker="o", label=name)
-    ax.set_xlabel("chunk size (words)"); ax.set_ylabel("Recall@5 (macro)"); ax.set_title("Chunk-size sweep (core sub-corpus)")
+    ax.set_xlabel("chunk size (words)"); ax.set_ylabel("Recall@5 (macro)"); ax.set_title("Chunk-size sweep (core sub-corpus" + measured_on(RESULTS_DIR / "chunk_sweep_meta.json") + ")")
     ax.legend(frameon=False); fig.tight_layout(); fig.savefig(FIG_DIR / "chunk_sweep.png"); plt.close(fig)
 
 
@@ -111,7 +112,7 @@ def fig_answer_eval():
         rg = [s["rag"]["correctness_mean(0-2)"] / 2, s["rag"]["faithfulness_mean(0-2)"] / 2, s["rag"]["fabricated_citation_rate"]]
         x = range(3); axes[1].bar([i - 0.2 for i in x], cb, 0.4, label="closed-book", color="#999"); axes[1].bar([i + 0.2 for i in x], rg, 0.4, label="RAG (ours)", color="#2b6cb0")
         axes[1].set_xticks(list(x)); axes[1].set_xticklabels(labels); axes[1].set_ylim(0, 1); axes[1].legend(frameon=False, fontsize=7)
-        axes[1].set_title(f"Judged answer quality (n={s['rag']['n']})")
+        axes[1].set_title(f"Judged answer quality (n={s['rag']['n']}{measured_on(RESULTS_DIR / 'answer_eval' / 'summary.json')})")
     fig.tight_layout(); fig.savefig(FIG_DIR / "answer_eval.png"); plt.close(fig)
 
 
@@ -119,6 +120,9 @@ def fig_reranker_variants():
     f, l = _load("ft"), None
     p = RESULTS_DIR / "ablation_ft_legalce" / "metrics.csv"
     if f is None or not p.exists(): return
+    old = measured_on(RESULTS_DIR / "ablation_ft_legalce" / "meta.json")   # not re-run since v1: compare with runs on the same corpus
+    v1 = RESULTS_DIR / "v1" / "ablation_ft" / "metrics.csv"
+    f = pd.read_csv(v1) if old and v1.exists() else f
     l = pd.read_csv(p)
     tasks = ["bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"]
     variants = [("no reranker", f, "faiss+bm25+kg"), ("generic CE", f, "faiss+bm25+kg+rerank"), ("legal CE (1 ep)", l, "faiss+bm25+kg+rerank"),
@@ -128,7 +132,7 @@ def fig_reranker_variants():
         vals = [src[(src.task == t) & (src.config == cfg)]["R@5"].iloc[0] for t in tasks]
         ax.bar([j + (i - len(variants) / 2 + 0.5) * w for j in range(len(tasks))], vals, w, label=lab)
     ax.set_xticks(range(len(tasks))); ax.set_xticklabels([TASK_LABEL[t] for t in tasks]); ax.set_ylim(0, 1); ax.set_ylabel("Recall@5")
-    ax.legend(frameon=False, ncol=5, fontsize=7); ax.set_title("Reranking strategies on fine-tuned embeddings")
+    ax.legend(frameon=False, ncol=5, fontsize=7); ax.set_title("Reranking strategies on fine-tuned embeddings" + (f" ({old[2:]})" if old else ""))
     fig.tight_layout(); fig.savefig(FIG_DIR / "reranker_variants.png"); plt.close(fig)
 
 

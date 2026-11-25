@@ -5,13 +5,13 @@ combination is then fused with RRF offline and optionally reranked with the cros
 (query, chunk)). Metrics are document-level (chunks are collapsed to their parent section / judgment).
 """
 from __future__ import annotations
-import argparse, json, time, itertools
+import argparse, hashlib, json, time, itertools
 from collections import defaultdict
 from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from ..config import INDEX_DIR, RESULTS_DIR, BASE_EMBEDDING_MODEL, RERANKER_MODEL, RRF_K, RETRIEVER_WEIGHTS, KG_CONFIDENT_BOOST
+from ..config import CORPUS_VERSION, INDEX_DIR, RESULTS_DIR, BASE_EMBEDDING_MODEL, RERANKER_MODEL, RRF_K, RETRIEVER_WEIGHTS, KG_CONFIDENT_BOOST
 from ..data.chunking import load_chunks
 from ..index.embedder import Embedder
 from ..index.faiss_index import FaissIndex
@@ -26,7 +26,10 @@ COMBOS = [("bm25",), ("faiss",), ("kg",), ("faiss", "bm25"), ("faiss", "kg"), ("
 RERANK_COMBOS = [("faiss",), ("bm25",), ("faiss", "bm25"), ("faiss", "bm25", "kg")]
 
 
-def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=None, limit=None, no_rerank=False, out_name=None, reranker_model: str = RERANKER_MODEL):
+def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=None, limit=None, no_rerank=False, out_name=None, reranker_model: str = RERANKER_MODEL,
+        right_type: bool = False, balanced: bool = False):
+    """right_type: restrict every query to the document type of its gold documents (statute or case). That is what a
+    perfect statute-or-judgment router would score: a ceiling for routing, not a configuration the system ships."""
     gold = [g for g in load_gold() if not tasks or g["task"] in tasks]
     if limit:
         gold = gold[:limit]
@@ -42,6 +45,8 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
     queries = [g["query"] for g in gold]
     # BM25 / KG rankings are independent of the embedding model -> cache them across runs
     types_of = {g["qid"]: tuple(g.get("meta", {}).get("doc_types", ())) for g in gold}
+    if right_type:
+        types_of = {g["qid"]: tuple(sorted({r.split("::")[0] for r in g["relevant"]})) for g in gold}
     masks = {}
     for ty in {t for t in types_of.values() if t}:
         masks[ty] = (np.array([by_id[c].doc_type in ty if c in by_id else False for c in bm25.ids]),
@@ -53,7 +58,9 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
         return [(c, s) for c, s in ranked if c in by_id and by_id[c].doc_type in ty][:top_n]
     def ckey(qid):                                    # cache key carries the filter so filtered queries are versioned
         return qid if not types_of[qid] else f"{qid}|{'+'.join(types_of[qid])}|exact"
-    cache_p = RESULTS_DIR / f"cache_bm25_kg_top{top_n}_v2.json"
+    # The cache is only valid for the indices it was computed on, so its name carries a fingerprint of them.
+    fp = hashlib.md5(f"{len(bm25.ids)}|{bm25.ids[0]}|{bm25.ids[-1]}|{len(bm25.vocab)}|{kg.stats()}".encode()).hexdigest()[:10]
+    cache_p = RESULTS_DIR / f"cache_bm25_kg_top{top_n}_{fp}.json"
     cached = json.load(open(cache_p)) if cache_p.exists() else {"bm25": {}, "kg": {}, "lat": {"bm25": [], "kg": []}}
     t = time.perf_counter(); qvecs = emb.encode_queries(queries); lat["embed_batch_total_ms"].append((time.perf_counter() - t) * 1000)
     dirty = False
@@ -117,6 +124,33 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
                     lat["rerank_per_pair"].append((time.perf_counter() - t) * 1000 / len(todo))
                 ranked = sorted(cands, key=lambda c: -cache[(g["qid"], c)])
                 runs[name][g["qid"]] = dedupe_docs(ranked)[:10]
+        if balanced:
+            # Experiment: gather candidates per document type, so that judgments (two thirds of the chunks) cannot crowd
+            # provisions out of the pool; the reranker still decides the final order. `per` candidates of each type.
+            tmask = {ty: (np.array([by_id[c].doc_type in ty if c in by_id else False for c in bm25.ids]),
+                          np.array([i for i, c in enumerate(faiss_idx.ids) if c in by_id and by_id[c].doc_type in ty], dtype="int64")) for ty in (("statute",), ("case",))}
+            def typed(g, qv, ty):
+                bm, fa = tmask[ty]
+                sub = {"faiss": faiss_idx.search(qv, top_n, allowed=fa)[0], "bm25": bm25.search(g["query"], top_n, mask=bm),
+                       "kg": [(c, s) for c, s in kg.retrieve(g["query"], top_n * 8) if c in by_id and by_id[c].doc_type in ty][:top_n]}
+                w = dict(RETRIEVER_WEIGHTS)
+                if sub["kg"] and sub["kg"][0][1] >= 0.9:
+                    w["kg"] = w.get("kg", 1.0) * KG_CONFIDENT_BOOST
+                return [c for c, _ in rrf(sub, k=RRF_K, weights=w) if c in by_id]
+            pools: dict[str, dict] = {}
+            for per in (15, 30):
+                name = f"faiss+bm25+kg+rerank[balanced={per}]"; runs[name] = {}
+                for g, qv in tqdm(list(zip(gold, qvecs)), desc=name):
+                    if types_of[g["qid"]]:                    # the query is already restricted to one type
+                        runs[name][g["qid"]] = runs["faiss+bm25+kg+rerank"][g["qid"]]; continue
+                    if g["qid"] not in pools:
+                        pools[g["qid"]] = {ty: typed(g, qv, ty) for ty in tmask}
+                    cands = list(dict.fromkeys(c for ty in tmask for c in pools[g["qid"]][ty][:per]))
+                    todo = [c for c in cands if (g["qid"], c) not in cache]
+                    if todo:
+                        for c, sc in rer.rerank(g["query"], [(c, by_id[c].text) for c in todo]):
+                            cache[(g["qid"], c)] = sc
+                    runs[name][g["qid"]] = dedupe_docs(sorted(cands, key=lambda c: -cache[(g["qid"], c)]))[:10]
     # metrics per task + macro
     rows = []
     tasks_present = sorted({g["task"] for g in gold})
@@ -137,7 +171,7 @@ def run(tag: str, embed_model: str, top_n: int = 30, rerank_n: int = 30, tasks=N
               open(out / "latency.json", "w"), indent=2)
     json.dump({n: r for n, r in runs.items()}, open(out / "runs.json", "w"))
     json.dump({"tag": tag, "embed_model": embed_model, "reranker": None if no_rerank else reranker_model, "top_n": top_n,
-               "n_queries": len(gold), "tasks": tasks_present}, open(out / "meta.json", "w"), indent=2)
+               "n_queries": len(gold), "tasks": tasks_present, "chunks": len(chunks), "right_type": right_type, "corpus": CORPUS_VERSION}, open(out / "meta.json", "w"), indent=2)
     return df
 
 
@@ -145,8 +179,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="base"); ap.add_argument("--embed-model", default=BASE_EMBEDDING_MODEL)
     ap.add_argument("--tasks", nargs="*"); ap.add_argument("--limit", type=int); ap.add_argument("--no-rerank", action="store_true")
-    ap.add_argument("--out-name"); ap.add_argument("--reranker-model", default=RERANKER_MODEL); a = ap.parse_args()
-    df = run(a.tag, a.embed_model, tasks=a.tasks, limit=a.limit, no_rerank=a.no_rerank, out_name=a.out_name, reranker_model=a.reranker_model)
+    ap.add_argument("--out-name"); ap.add_argument("--reranker-model", default=RERANKER_MODEL)
+    ap.add_argument("--right-type", action="store_true", help="restrict each query to the document type of its answer (a routing ceiling)")
+    ap.add_argument("--balanced", action="store_true", help="also evaluate type-balanced candidate pools (an experiment; use with --out-name)")
+    a = ap.parse_args()
+    df = run(a.tag, a.embed_model, tasks=a.tasks, limit=a.limit, no_rerank=a.no_rerank, out_name=a.out_name, reranker_model=a.reranker_model,
+             right_type=a.right_type, balanced=a.balanced)
     pd.set_option("display.width", 200)
     print(df[df.task == "macro"][["config", "R@1", "R@5", "R@10", "MRR@10", "nDCG@10"]].round(3).to_string(index=False))
 

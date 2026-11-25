@@ -1,5 +1,6 @@
 """Hybrid retriever: FAISS (semantic) + BM25 (lexical) + KG (entity) -> RRF -> cross-encoder rerank."""
 from __future__ import annotations
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,6 +43,11 @@ class HybridRetriever:
         self.kg = LegalKG.load(index_dir / "kg")
         self.reranker = get_reranker() if load_reranker else None
         self._type_masks: dict[tuple, tuple] = {}
+        # The chunk file and the indices are built together and must be fetched together. A host that mixes two
+        # versions (say, new chunks with an older FAISS index) still starts, but retrieves from a partial corpus.
+        self.index_sizes = {"chunks": len(self.chunks), "faiss": len(self.faiss.ids), "bm25": len(self.bm25.ids)}
+        if len(set(self.index_sizes.values())) > 1:
+            logging.getLogger("lawline").warning("chunk file and indices differ in size, so they were not built together: %s", self.index_sizes)
 
     def type_masks(self, types: tuple):
         """(bm25 boolean mask, faiss allowed-id array) for a document-type restriction; cached."""
@@ -58,7 +64,7 @@ class HybridRetriever:
         route = "question"
         if cfg.auto_route and len(query.split()) > ROUTE_WORDS and cfg.use_faiss:
             # Narrative fact patterns: lexical overlap with procedural boilerplate misleads BM25 and the generic
-            # cross-encoder (ablation: R@5 0.325 dense-only vs 0.023 hybrid+rerank); use the legal-tuned dense retriever.
+            # cross-encoder (ablation on the v1 corpus: R@5 0.325 dense-only vs 0.023 hybrid+rerank); use the legal-tuned dense retriever.
             cfg = _replace(cfg, use_bm25=False, use_kg=False, use_reranker=False)
             route = "narrative"
         rankings, timings = {}, {}
@@ -106,7 +112,7 @@ class HybridRetriever:
             final = candidates[:cfg.final_k]
         # Guaranteed slot: for short questions an exact KG match (e.g. "anticipatory bail" -> BNSS s.482, whose text never
         # contains the word) is kept even when lexical/dense consensus and the generic reranker drop it. Offline evaluation
-        # showed this is neutral on the benchmark (macro R@5 0.725 -> 0.724) while fixing such vocabulary-gap queries.
+        # showed this is neutral on the benchmark (v1 corpus: macro R@5 0.725 -> 0.724) while fixing such vocabulary-gap queries.
         if cfg.kg_guarantee_slot and rankings.get("kg") and rankings["kg"][0][1] >= 0.9 and len(query.split()) <= SHORT_QUERY_WORDS:
             top_cid = rankings["kg"][0][0]
             top_doc = top_cid.split("#c")[0]

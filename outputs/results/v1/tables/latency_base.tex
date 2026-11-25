@@ -1,0 +1,15 @@
+\begin{table}
+\caption{Per-stage retrieval latency on Apple M-series laptop (base)}
+\label{tab:latency_base}
+\begin{tabular}{lrrr}
+\toprule
+Stage & mean (ms) & p50 (ms) & p95 (ms) \\
+\midrule
+faiss & 4.2 & 2.1 & 5.2 \\
+bm25 & 1122.8 & 731.2 & 2825.7 \\
+kg & 87.7 & 67.8 & 165.9 \\
+embed\_single & 117.9 & 14.8 & 24.4 \\
+rerank\_per\_pair & 10.2 & 10.0 & 15.6 \\
+\bottomrule
+\end{tabular}
+\end{table}

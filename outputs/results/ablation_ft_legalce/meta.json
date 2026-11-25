@@ -9,5 +9,6 @@
     "const_qa",
     "ipc_facts",
     "sc_case"
-  ]
+  ],
+  "corpus": "v1"
 }

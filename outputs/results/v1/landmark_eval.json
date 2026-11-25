@@ -1,0 +1,1779 @@
+{
+  "summary": {
+    "questions": 73,
+    "judgment_in_corpus": 3,
+    "all_hit@1": 0.027,
+    "all_hit@5": 0.041,
+    "all_hit@10": 0.041,
+    "cases_only_hit@1": 0.027,
+    "cases_only_hit@5": 0.041,
+    "cases_only_hit@10": 0.041,
+    "chunks": 69260,
+    "faiss_tag": "ft",
+    "pool": 30
+  },
+  "rows": [
+    {
+      "qid": "lm00",
+      "query": "Can Parliament amend any part of the Constitution, or is there a basic structure it cannot alter?",
+      "targets": [
+        "KESAVANANDA (1973)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::368",
+          "statute::constitution-of-india-1949::240",
+          "statute::constitution-of-india-1949::2"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-1008-1026-en",
+          "case::sc2016::2016-7-689-712-en",
+          "case::sc2016::2016-4-488-503-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm01",
+      "query": "Which decision held that Parliament has no power to amend fundamental rights and applied prospective overruling?",
+      "targets": [
+        "GOLAK NATH (1967)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::sc2016::2016-7-689-712-en",
+          "statute::constitution-of-india-1949::11"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::sc2016::2016-7-689-712-en",
+          "case::landmark::maneka-gandhi-v-union-of-india"
+        ]
+      }
+    },
+    {
+      "qid": "lm02",
+      "query": "Which early decision upheld a preventive detention law by reading procedure established by law apart from the freedoms in Article 19?",
+      "targets": [
+        "A.K. GOPALAN (1950)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "statute::constitution-of-india-1949::373",
+          "case::landmark::maneka-gandhi-v-union-of-india"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc"
+        ]
+      }
+    },
+    {
+      "qid": "lm03",
+      "query": "Could a detenu file a habeas corpus petition during the Emergency when Article 21 was suspended?",
+      "targets": [
+        "DISTRICT MAGISTRATE JABALPUR (1976)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::conservation-of-foreign-exchange-and-prevention-of-smuggling-activities-act-1974::3",
+          "statute::constitution-of-india-1949::359",
+          "statute::constitution-of-india-1949::358"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::f8035c67475c",
+          "case::sc2016::2016-1-373-404-en",
+          "case::sc2016::2016-9-510-514-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm04",
+      "query": "Is the limited amending power of Parliament itself part of the basic structure, and can directive principles override fundamental rights?",
+      "targets": [
+        "MINERVA MILLS (1980)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "statute::constitution-of-india-1949::368",
+          "case::sc2016::2016-11-621-659-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::sc2016::2016-11-621-659-en",
+          "case::sc2016::2016-6-611-634-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm05",
+      "query": "When can the death penalty be imposed for murder; what is the rarest of rare doctrine?",
+      "targets": [
+        "BACHAN SINGH (1980)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-561-567-en",
+          "statute::indian-penal-code-1860::302",
+          "statute::bharatiya-nyaya-sanhita-2023::103"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-561-567-en",
+          "case::hc::cb01c0f0a3ba",
+          "case::hc::09b1576d3a11"
+        ]
+      }
+    },
+    {
+      "qid": "lm06",
+      "query": "Is a mandatory death sentence for murder committed by a life convict constitutional?",
+      "targets": [
+        "MITHU (1983)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nyaya-sanhita-2023::104",
+          "statute::indian-penal-code-1860::303",
+          "statute::indian-penal-code-1860::302"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-872-935-en",
+          "case::sc2016::2016-5-30-50-en",
+          "case::sc2016::2016-8-741-754-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm07",
+      "query": "Is there a 50 per cent ceiling on reservations, and must the creamy layer among backward classes be excluded?",
+      "targets": [
+        "INDRA SAWHNEY (1992)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::16",
+          "case::sc2016::2016-3-407-419-en",
+          "statute::central-educational-institutions-reservation-in-admission-act-2006::3"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-407-419-en",
+          "case::sc2016::2016-8-803-814-en",
+          "case::sc2016::2016-9-835-865-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm08",
+      "query": "Can courts review a proclamation of President's rule under Article 356, and is secularism a basic feature?",
+      "targets": [
+        "S.R. BOMMAI (1994)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::356",
+          "statute::constitution-of-india-1949::357",
+          "statute::assam-reorganisation-meghalaya-act-1969::69"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-266-282-en",
+          "case::sc2016::2016-8-872-935-en",
+          "case::sc2016::2016-2-1008-1026-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm09",
+      "query": "What guidelines must employers follow to prevent sexual harassment of women at the workplace?",
+      "targets": [
+        "VISHAKA (1997)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::sexual-harassment-of-women-at-workplace-prevention-prohibition-and-redressal-act-2013::22",
+          "statute::sexual-harassment-of-women-at-workplace-prevention-prohibition-and-redressal-act-2013::3",
+          "statute::sexual-harassment-of-women-at-workplace-prevention-prohibition-and-redressal-act-2013::19"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::icici-bank-ltd-v-pradeep-singh",
+          "case::hc::58454734b2d0",
+          "case::sc2016::2016-1-316-342-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm10",
+      "query": "What requirements must police follow when arresting and detaining a person to prevent custodial violence?",
+      "targets": [
+        "D.K. BASU (1996)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::170",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::46",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::172"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::7256f055b129",
+          "case::hc::1f03bae444b1",
+          "case::hc::b1c5c66cfbfc"
+        ]
+      }
+    },
+    {
+      "qid": "lm11",
+      "query": "Must police arrest automatically in a dowry harassment case where the offence is punishable with up to seven years?",
+      "targets": [
+        "ARNESH KUMAR (2014)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::indian-penal-code-1860::304B",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::35",
+          "statute::bharatiya-nyaya-sanhita-2023::80"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::9937119d0b80",
+          "case::sc2016::2016-1-468-483-en",
+          "case::sc2016::2016-11-764-779-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm12",
+      "query": "Is registration of an FIR mandatory when information discloses a cognizable offence, or can police hold a preliminary inquiry first?",
+      "targets": [
+        "LALITA KUMARI (2013)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::hc::e84999fb9950",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::173",
+          "case::hc::93cebd01ebf4"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::e84999fb9950",
+          "case::hc::93cebd01ebf4",
+          "case::sc2016::2016-7-154-175-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm13",
+      "query": "Was the provision punishing offensive messages sent online struck down for violating free speech?",
+      "targets": [
+        "SHREYA SINGHAL (2015)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::hc::149d1cab0506",
+          "statute::bharatiya-nyaya-sanhita-2023::352"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::hc::149d1cab0506",
+          "case::sc2016::2016-4-50-61-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm14",
+      "query": "Is consensual sex between adults of the same sex still a criminal offence?",
+      "targets": [
+        "NAVTEJ SINGH JOHAR (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nyaya-sanhita-2023::69",
+          "statute::bharatiya-nyaya-sanhita-2023::67",
+          "statute::bharatiya-nyaya-sanhita-2023::68"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-179-186-en",
+          "case::sc2016::2016-9-615-632-en",
+          "case::sc2016::2016-9-515-559-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm15",
+      "query": "Is adultery still a crime for which only the man can be punished?",
+      "targets": [
+        "JOSEPH SHINE (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::indian-penal-code-1860::497",
+          "statute::indian-penal-code-1860::493",
+          "statute::indian-penal-code-1860::377"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-207-215-en",
+          "case::sc2016::2016-11-764-779-en",
+          "case::hc::5ac0beab4880"
+        ]
+      }
+    },
+    {
+      "qid": "lm16",
+      "query": "Is instant triple talaq a valid form of divorce?",
+      "targets": [
+        "SHAYARA BANO (2017)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::muslim-women-protection-of-rights-on-marriage-act-2019::2",
+          "statute::muslim-women-protection-of-rights-on-marriage-act-2019::3",
+          "statute::muslim-women-protection-of-rights-on-marriage-act-2019::4"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::25ee8f4e56f1",
+          "case::sc2016::2016-5-840-850-en",
+          "case::sc2016::2016-2-969-972-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm17",
+      "query": "Is passive euthanasia permitted, and can a person make a living will or advance directive?",
+      "targets": [
+        "COMMON CAUSE (2018)",
+        "ARUNA RAMCHANDRA SHANBAUG (2011)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::mental-healthcare-act-2017::5",
+          "statute::mental-healthcare-act-2017::11",
+          "statute::mental-healthcare-act-2017::8"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::hc::3ea3c2c877e1",
+          "case::hc::4c80d3a9df6f"
+        ]
+      }
+    },
+    {
+      "qid": "lm18",
+      "query": "Is the Aadhaar scheme constitutionally valid, and can it be made mandatory for bank accounts and mobile phones?",
+      "targets": [
+        "PUTTASWAMY (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::aadhaar-targeted-delivery-of-financial-and-other-subsidies-benefits-and-services-act-2016::4",
+          "statute::aadhaar-targeted-delivery-of-financial-and-other-subsidies-benefits-and-services-act-2016::24",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::sc2016::2016-8-363-379-en",
+          "case::sc2016::2016-1-879-895-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm19",
+      "query": "Can women of menstruating age be barred from entering a temple on grounds of religious custom?",
+      "targets": [
+        "INDIAN YOUNG LAWYERS (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::44",
+          "statute::religious-institutions-prevention-of-misuse-act-1988::4",
+          "statute::indecent-representation-of-women-prohibition-act-1986::4"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::249372df1d23",
+          "case::sc2016::2016-1-316-342-en",
+          "case::hc::88778fb9e871"
+        ]
+      }
+    },
+    {
+      "qid": "lm20",
+      "query": "Are transgender persons legally recognised as a third gender with fundamental rights?",
+      "targets": [
+        "NATIONAL LEGAL SERVICES AUTHORITY (2014)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::transgender-persons-protection-of-rights-act-2019::4",
+          "statute::transgender-persons-protection-of-rights-act-2019::6",
+          "statute::transgender-persons-protection-of-rights-act-2019::13"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-4-638-684-en",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::sc2016::2016-1-1090-1114-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm21",
+      "query": "What principles govern the grant of anticipatory bail, and must it be limited to a fixed period?",
+      "targets": [
+        "GURBAKSH SINGH SIBBIA (1980)",
+        "SUSHILA AGGARWAL (2020)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::hc::79ba8063b62b",
+          "case::hc::55b6c0421fb0",
+          "case::hc::2e6c8361e83e"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::79ba8063b62b",
+          "case::hc::55b6c0421fb0",
+          "case::hc::614d0327614b"
+        ]
+      }
+    },
+    {
+      "qid": "lm22",
+      "query": "In what categories of cases can a High Court quash an FIR using its inherent powers?",
+      "targets": [
+        "BHAJAN LAL (1990)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::hc::9a7b334832b3",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::528",
+          "statute::code-of-criminal-procedure-act-1973::482"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-968-983-en",
+          "case::hc::9a7b334832b3",
+          "case::sc2016::2016-4-281-287-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm23",
+      "query": "Is a certificate required before electronic records such as CDs or call records can be admitted as secondary evidence?",
+      "targets": [
+        "ANVAR P.V. (2014)",
+        "ARJUN PANDITRAO KHOTKAR (2020)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-sakshya-adhiniyam-2023::60",
+          "statute::bharatiya-sakshya-adhiniyam-2023::63",
+          "statute::bharatiya-sakshya-adhiniyam-2023::81"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-1115-1117-en",
+          "case::sc2016::2016-7-746-759-en",
+          "case::hc::251e8b990141"
+        ]
+      }
+    },
+    {
+      "qid": "lm24",
+      "query": "Can a divorced Muslim woman claim maintenance from her former husband beyond the iddat period?",
+      "targets": [
+        "AHMED KHAN (1985)",
+        "DANIAL LATIFI (2001)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::muslim-women-protection-of-rights-on-divorce-act-1986::4",
+          "statute::muslim-women-protection-of-rights-on-divorce-act-1986::3",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::146"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-969-972-en",
+          "case::hc::5becab7a0227",
+          "case::hc::5f66a0c0da50"
+        ]
+      }
+    },
+    {
+      "qid": "lm25",
+      "query": "Is the right to a speedy trial part of the right to life, particularly for undertrial prisoners who have spent years in jail?",
+      "targets": [
+        "HUSSAINARA KHATOON (1979)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-7-1001-1007-en",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::479"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-7-1001-1007-en",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc"
+        ]
+      }
+    },
+    {
+      "qid": "lm26",
+      "query": "Can the Supreme Court act on a letter about bonded labourers working in stone quarries as public interest litigation?",
+      "targets": [
+        "BANDHUA MUKTI MORCHA (1983)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bonded-labor-system-abolition-act-1976::12",
+          "case::sc2016::2016-2-376-388-en",
+          "case::sc2016::2016-3-278-292-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-376-388-en",
+          "case::sc2016::2016-3-278-292-en",
+          "case::sc2016::2016-5-761-772-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm27",
+      "query": "Is an enterprise carrying on a hazardous activity absolutely liable for harm from a gas leak, without the usual exceptions to strict liability?",
+      "targets": [
+        "M.C. MEHTA (1986)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::oriental-gas-company-act-1857::21",
+          "statute::bhopal-gas-leak-disaster-processing-of-claims-act-1985::2",
+          "statute::consumer-protection-act-2019::87"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-525-529-en",
+          "case::sc2016::2016-11-812-823-en",
+          "case::sc2016::2016-4-638-684-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm28",
+      "query": "Are the precautionary principle and the polluter pays principle part of Indian environmental law?",
+      "targets": [
+        "VELLORE CITIZENS (1996)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::national-green-tribunal-act-2010::20",
+          "case::sc2016::2016-11-812-823-en",
+          "case::sc2016::2016-9-331-341-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-11-812-823-en",
+          "case::sc2016::2016-9-331-341-en",
+          "case::sc2016::2016-3-48-102-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm29",
+      "query": "Can a patient sue a doctor or hospital for deficient service before a consumer forum?",
+      "targets": [
+        "INDIAN MEDICAL ASSOCIATION (1995)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::hc::5321b808b19c",
+          "statute::petroleum-and-natural-gas-regulatory-board-act-2006::25",
+          "statute::consumer-protection-act-2019::85"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::5321b808b19c",
+          "case::hc::afed4cd2684a",
+          "case::hc::75c7cdb2eb1f"
+        ]
+      }
+    },
+    {
+      "qid": "lm30",
+      "query": "What degree of negligence is needed to prosecute a doctor for causing death by a rash or negligent act?",
+      "targets": [
+        "JACOB MATHEW (2005)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nyaya-sanhita-2023::106",
+          "statute::indian-penal-code-1860::304A",
+          "statute::metro-railways-operation-and-maintenance-act-2002::77"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::afed4cd2684a",
+          "case::sc2016::2016-9-227-236-en",
+          "case::sc2016::2016-1-299-315-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm31",
+      "query": "Who has primacy in appointing judges to the higher judiciary, the executive or a collegium of judges?",
+      "targets": [
+        "SUPREME COURT ADVOCATES-ON-RECORD (1993)",
+        "SUPREME COURT ADVOCATES-ON-RECORD (2015)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::217",
+          "statute::constitution-of-india-1949::224",
+          "case::sc2016::2016-5-51-68-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-834-855-en",
+          "case::sc2016::2016-5-51-68-en",
+          "case::sc2016::2016-3-806-817-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm32",
+      "query": "Can the power of judicial review of High Courts under Article 226 be excluded by setting up administrative tribunals?",
+      "targets": [
+        "L. CHANDRA KUMAR (1997)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::administrative-tribunals-act-1985::28",
+          "case::sc2016::2016-8-705-718-en",
+          "statute::administrative-tribunals-act-1985::19"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-705-718-en",
+          "case::hc::b1c5c66cfbfc",
+          "case::sc2016::2016-5-906-923-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm33",
+      "query": "Can a law placed in the Ninth Schedule after 1973 still be challenged for violating fundamental rights?",
+      "targets": [
+        "I.R. COELHO (2007)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-278-292-en",
+          "statute::constitution-of-india-1949::31B",
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-278-292-en",
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::sc2016::2016-6-611-634-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm34",
+      "query": "What must the State show before providing reservation in promotions for Scheduled Castes and Scheduled Tribes?",
+      "targets": [
+        "M. NAGARAJ (2006)",
+        "JARNAIL SINGH (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::apprentices-act-1961::3",
+          "statute::constitution-of-india-1949::335",
+          "statute::constitution-of-india-1949::332"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-727-761-en",
+          "case::sc2016::2016-9-122-140-en",
+          "case::sc2016::2016-3-407-419-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm35",
+      "query": "Is the anti-defection law in the Tenth Schedule valid, and can the Speaker's decision on disqualification be reviewed by courts?",
+      "targets": [
+        "KIHOTO HOLLOHAN (1992)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::government-of-national-capital-territory-of-delhi-act-1991::16",
+          "statute::constitution-of-india-1949::395",
+          "statute::jammu-and-kashmir-reorganisation-act-2019::28"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::0a1e544ccaaf",
+          "case::sc2016::2016-11-521-559-en",
+          "case::hc::c2f64832fae6"
+        ]
+      }
+    },
+    {
+      "qid": "lm36",
+      "query": "Is there a fundamental right to education, and up to what age?",
+      "targets": [
+        "UNNI KRISHNAN (1993)",
+        "MOHINI JAIN (1992)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::21A",
+          "statute::right-of-children-to-free-and-compulsory-education-act-2009::4",
+          "statute::right-of-children-to-free-and-compulsory-education-act-2009::3"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-579-717-en",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::sc2016::2016-5-761-772-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm37",
+      "query": "Which decision held that a cheque bounce complaint must be filed where the drawee bank is, the rule Parliament later changed?",
+      "targets": [
+        "DASHRATH RUPSINGH RATHOD (2014)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::negotiable-instruments-act-1881::31",
+          "statute::negotiable-instruments-act-1881::85",
+          "case::sc2016::2016-1-405-412-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::8ef00b4fc58e",
+          "case::sc2016::2016-1-405-412-en",
+          "case::sc2016::2016-6-531-540-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm38",
+      "query": "What directions did the Supreme Court issue for police reforms, such as a State Security Commission and fixed tenure for officers?",
+      "targets": [
+        "PRAKASH SINGH (2006)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::14",
+          "case::sc2016::2016-3-492-499-en",
+          "statute::central-vigilance-commission-act-2003::8"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-851-871-en",
+          "case::sc2016::2016-8-705-718-en",
+          "case::sc2016::2016-3-492-499-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm39",
+      "query": "Is a confession recorded by a narcotics officer admissible against the accused in a drugs trial?",
+      "targets": [
+        "TOFAN SINGH (2020)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::code-of-criminal-procedure-act-1973::164",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::183",
+          "statute::prevention-of-terrorism-act-2002::32"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-247-333-en",
+          "case::hc::d6c47f0ee072",
+          "case::hc::92a2ab3313e2"
+        ]
+      }
+    },
+    {
+      "qid": "lm40",
+      "query": "Does a daughter have coparcenary rights in ancestral property by birth even if her father died before 2005?",
+      "targets": [
+        "VINEETA SHARMA (2020)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-100-115-en",
+          "statute::hindu-adoptions-and-maintenance-act-1956::19",
+          "case::sc2016::2016-11-210-218-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-100-115-en",
+          "case::sc2016::2016-11-210-218-en",
+          "case::sc2016::2016-9-515-559-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm41",
+      "query": "Can the government suspend internet services indefinitely, and is access to the internet protected by freedom of speech?",
+      "targets": [
+        "ANURADHA BHASIN (2020)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::information-technology-act-2000::70",
+          "case::sc2016::2016-11-621-659-en",
+          "case::sc2016::2016-6-611-634-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-11-621-659-en",
+          "case::sc2016::2016-6-611-634-en",
+          "case::landmark::maneka-gandhi-v-union-of-india"
+        ]
+      }
+    },
+    {
+      "qid": "lm42",
+      "query": "Was the electoral bonds scheme for anonymous political donations held unconstitutional?",
+      "targets": [
+        "ASSOCIATION FOR DEMOCRATIC REFORMS (2024)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::income-tax-act-1961::13",
+          "statute::income-tax-act-1961::97",
+          "case::sc2016::2016-6-851-955-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-6-851-955-en",
+          "case::sc2016::2016-8-363-379-en",
+          "case::sc2016::2016-12-106-130-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm43",
+      "query": "Is ten per cent reservation for economically weaker sections among forward castes constitutional?",
+      "targets": [
+        "JANHIT ABHIYAN (2022)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::15",
+          "statute::constitution-of-india-1949::16",
+          "statute::central-educational-institutions-reservation-in-teachers-cadre-act-2019::7"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-9-835-865-en",
+          "case::sc2016::2016-1-316-342-en",
+          "case::sc2016::2016-9-122-140-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm44",
+      "query": "Are the Enforcement Directorate's powers of arrest and the twin conditions for bail in money laundering cases valid?",
+      "targets": [
+        "VIJAY MADANLAL CHOUDHARY (2022)",
+        "NIKESH TARACHAND SHAH (2017)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::488",
+          "statute::prevention-of-money-laundering-act-2002::49",
+          "statute::prevention-of-money-laundering-act-2002::47"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::sanjay-v-the-state-nct-of-delhi",
+          "case::hc::c140e56f314c",
+          "case::hc::3a4d36323ef2"
+        ]
+      }
+    },
+    {
+      "qid": "lm45",
+      "query": "What guidelines apply to bail for an accused who was not arrested during investigation and cooperated throughout?",
+      "targets": [
+        "SATENDER KUMAR ANTIL (2022)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::code-of-criminal-procedure-act-1973::437",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::479",
+          "statute::bharatiya-nagarik-suraksha-sanhita-2023::480"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::8eddcaab5ad5",
+          "case::hc::e2738a661acc",
+          "case::hc::8fc7ea1b0631"
+        ]
+      }
+    },
+    {
+      "qid": "lm46",
+      "query": "Is sexual intercourse by a husband with his wife aged between fifteen and eighteen years rape?",
+      "targets": [
+        "INDEPENDENT THOUGHT (2017)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::indian-penal-code-1860::375",
+          "statute::bharatiya-nyaya-sanhita-2023::63",
+          "statute::bharatiya-nyaya-sanhita-2023::67"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::249372df1d23",
+          "case::hc::3a971d2d59de",
+          "case::sc2016::2016-1-179-186-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm47",
+      "query": "When does a live-in relationship qualify as a relationship in the nature of marriage for protection against domestic violence?",
+      "targets": [
+        "D. VELUSAMY (2010)",
+        "INDRA SARMA (2013)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-9-515-559-en",
+          "statute::protection-of-women-from-domestic-violence-act-2005::2",
+          "statute::protection-of-women-from-domestic-violence-act-2005::17"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-9-515-559-en",
+          "case::sc2016::2016-2-969-972-en",
+          "case::sc2016::2016-2-608-621-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm48",
+      "query": "Is a second marriage valid if a Hindu husband converts to Islam without dissolving his first marriage?",
+      "targets": [
+        "SARLA MUDGAL (1995)",
+        "LILY THOMAS (2000)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::dissolution-of-muslim-marriage-act-1939::4",
+          "statute::hindu-marriage-act-1955::29",
+          "statute::converts-marriage-dissolution-act-1866::4"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::d45cc5549d18",
+          "case::hc::442147f14bfe",
+          "case::sc2016::2016-5-840-850-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm49",
+      "query": "Can Indian courts grant interim relief or set aside an award in an arbitration seated outside India?",
+      "targets": [
+        "BHARAT ALUMINIUM (2012)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-634-648-en",
+          "statute::arbitration-act-1940::34",
+          "statute::arbitration-and-conciliation-act-1996::34"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-634-648-en",
+          "case::sc2016::2016-8-773-789-en",
+          "case::hc::199cb0b305b3"
+        ]
+      }
+    },
+    {
+      "qid": "lm50",
+      "query": "Is capital gains tax payable in India when shares of a foreign holding company owning an Indian business are sold offshore?",
+      "targets": [
+        "VODAFONE INTERNATIONAL (2012)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::income-tax-act-1961::42",
+          "statute::income-tax-act-1961::183",
+          "statute::income-tax-act-1961::43"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-1-952-972-en",
+          "case::sc2016::2016-12-1-25-en",
+          "case::sc2016::2016-5-635-652-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm51",
+      "query": "Is the Insolvency and Bankruptcy Code's different treatment of financial and operational creditors constitutional?",
+      "targets": [
+        "SWISS RIBBONS (2019)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::insolvency-and-bankruptcy-code-act-2016::28",
+          "statute::insolvency-and-bankruptcy-code-act-2016::21",
+          "statute::insolvency-and-bankruptcy-code-act-2016::43"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::icici-bank-ltd-v-pradeep-singh",
+          "case::sc2016::2016-6-703-727-en",
+          "case::sc2016::2016-11-419-475-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm52",
+      "query": "Is telephone tapping by the government an invasion of privacy, and what safeguards apply?",
+      "targets": [
+        "PEOPLE'S UNION FOR CIVIL LIBERTIES (1996)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::landmark::pinki-v-the-state-of-uttar-pradesh",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "statute::credit-information-companies-regulation-act-2005::19"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::pinki-v-the-state-of-uttar-pradesh",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::sc2016::2016-4-638-684-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm53",
+      "query": "Do voters have a right to reject all candidates through a none of the above option?",
+      "targets": [
+        "PEOPLE'S UNION FOR CIVIL LIBERTIES (2013)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nyaya-sanhita-2023::169",
+          "statute::bharatiya-nyaya-sanhita-2023::171",
+          "case::sc2016::2016-4-439-450-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-4-439-450-en",
+          "case::sc2016::2016-9-74-82-en",
+          "case::sc2016::2016-9-687-711-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm54",
+      "query": "Does a sitting legislator lose the seat immediately on conviction, or can membership continue while an appeal is pending?",
+      "targets": [
+        "LILY THOMAS (2013)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::state-of-nagaland-act-1962::10",
+          "statute::constitution-of-india-1949::395",
+          "statute::union-territories-direct-election-to-the-house-of-the-people-act-1965::6"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-6-611-634-en",
+          "case::sc2016::2016-3-434-448-en",
+          "case::sc2016::2016-3-469-477-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm55",
+      "query": "What preventive and remedial measures must States take against mob lynching and cow vigilantism?",
+      "targets": [
+        "TEHSEEN (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::employment-of-manual-scavengers-and-construction-of-dry-latrines-prohibition-act-1993::10",
+          "statute::conservation-of-foreign-exchange-and-prevention-of-smuggling-activities-act-1974::3",
+          "statute::sick-industrial-companies-special-provisions-act-1985::18"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-11-824-856-en",
+          "case::hc::502c2680daa9",
+          "case::hc::0cefd795cf15"
+        ]
+      }
+    },
+    {
+      "qid": "lm56",
+      "query": "What must authorities do to prevent honour killings ordered by khap panchayats against inter-caste couples?",
+      "targets": [
+        "SHAKTI VAHINI (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-872-935-en",
+          "statute::provisions-of-the-panchayats-extension-to-the-scheduled-areas-act-1996::4",
+          "statute::constitution-of-india-1949::243D"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-8-872-935-en",
+          "case::hc::82ca76fb3646",
+          "case::hc::c1792c4337c7"
+        ]
+      }
+    },
+    {
+      "qid": "lm57",
+      "query": "Can a court annul the marriage of an adult woman who converted and married a man of her choice?",
+      "targets": [
+        "SHAFIN JAHAN (2018)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::dissolution-of-muslim-marriage-act-1939::4",
+          "statute::indian-penal-code-1860::498",
+          "statute::bharatiya-nyaya-sanhita-2023::84"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::hc::5b19a0d7ef45",
+          "case::hc::5ac0beab4880",
+          "case::hc::df5c91a4b102"
+        ]
+      }
+    },
+    {
+      "qid": "lm58",
+      "query": "Do same-sex couples have a fundamental right to marry?",
+      "targets": [
+        "SUPRIYO (2023)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::hindu-marriage-act-1955::15",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::hc::d45cc5549d18"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::hc::d45cc5549d18",
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc"
+        ]
+      }
+    },
+    {
+      "qid": "lm59",
+      "query": "Must a government corporation act fairly and follow its own tender conditions when awarding a contract?",
+      "targets": [
+        "RAMANA DAYARAM SHETTY (1979)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-4-157-170-en",
+          "case::sc2016::2016-3-551-560-en",
+          "statute::metal-corporation-nationalisation-and-miscellaneous-provisions-act-1976::17"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-4-157-170-en",
+          "case::sc2016::2016-3-551-560-en",
+          "case::sc2016::2016-3-310-322-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm60",
+      "query": "Can a clause allowing a public corporation to terminate a permanent employee with three months' notice be struck down as unconscionable?",
+      "targets": [
+        "CENTRAL INLAND WATER (1986)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::metal-corporation-nationalisation-and-miscellaneous-provisions-act-1976::14",
+          "statute::rajiv-gandhi-university-act-2006::50",
+          "case::sc2016::2016-9-141-162-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-9-141-162-en",
+          "case::sc2016::2016-1-697-726-en",
+          "case::sc2016::2016-9-495-509-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm61",
+      "query": "What must the prosecution prove under the third clause of the definition of murder about the bodily injury inflicted?",
+      "targets": [
+        "VIRSA SINGH (1958)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-5-421-437-en",
+          "case::sc2016::2016-4-627-634-en",
+          "statute::indian-penal-code-1860::300"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-5-421-437-en",
+          "case::sc2016::2016-4-627-634-en",
+          "case::sc2016::2016-5-816-826-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm62",
+      "query": "Does killing a wife's lover after learning of the affair amount to grave and sudden provocation?",
+      "targets": [
+        "NANAVATI (1961)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::indian-penal-code-1860::300",
+          "statute::indian-penal-code-1860::335",
+          "statute::indian-penal-code-1860::334"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-2-595-598-en",
+          "case::hc::bec926ab0b96",
+          "case::sc2016::2016-11-509-520-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm63",
+      "query": "Can a State sub-classify Scheduled Castes to give preference to the more backward among them?",
+      "targets": [
+        "DAVINDER SINGH (2024)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::scheduled-castes-and-scheduled-tribes-prevention-of-atrocities-act-1989::17",
+          "statute::constitution-of-india-1949::15",
+          "case::sc2016::2016-3-407-419-en"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-407-419-en",
+          "case::sc2016::2016-8-803-814-en",
+          "case::sc2016::2016-4-439-450-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm64",
+      "query": "Can the government ban the entry and circulation of a journal in a State in the interest of public safety?",
+      "targets": [
+        "ROMESH THAPPAR (1950)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::indian-telegraph-act-1885::5",
+          "statute::indian-post-office-act-1898::26",
+          "statute::food-safety-and-standards-act-2006::30"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-9-257-294-en",
+          "case::sc2016::2016-5-515-564-en",
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc"
+        ]
+      }
+    },
+    {
+      "qid": "lm65",
+      "query": "Was the 2016 demonetisation of high-value currency notes legally valid?",
+      "targets": [
+        "VIVEK NARAYAN SHARMA (2023)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::high-denomination-bank-notes-demonetisation-act-1978::3",
+          "case::sc2016::2016-7-798-806-en",
+          "statute::high-denomination-bank-notes-demonetisation-act-1978::4"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-7-798-806-en",
+          "case::sc2016::2016-4-995-1009-en",
+          "case::sc2016::2016-8-363-379-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm66",
+      "query": "Who did the Supreme Court say should select the Chief Election Commissioner and Election Commissioners until Parliament made a law?",
+      "targets": [
+        "ANOOP BARANWAL (2023)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::constitution-of-india-1949::324",
+          "statute::chief-election-commissioner-and-other-election-commissioners-conditions-of-service-act-1991::6",
+          "statute::chief-election-commissioner-and-other-election-commissioners-conditions-of-service-act-1991::3"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-4-555-582-en",
+          "case::sc2016::2016-3-834-855-en",
+          "case::sc2016::2016-2-65-70-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm67",
+      "query": "When does a contract become void because performance has become impossible or impracticable?",
+      "targets": [
+        "MUGNEERAM (1954)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::indian-contract-act-1872::56",
+          "statute::indian-contract-act-1872::35",
+          "statute::indian-contract-act-1872::32"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-3-1126-1152-en",
+          "case::landmark::icici-bank-ltd-v-pradeep-singh",
+          "case::sc2016::2016-11-614-620-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm68",
+      "query": "Could the central bank prohibit banks from dealing with cryptocurrency exchanges?",
+      "targets": [
+        "INTERNET AND MOBILE ASSOCIATION (2020)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "case::landmark::icici-bank-ltd-v-pradeep-singh",
+          "statute::companies-act-2013::40",
+          "statute::national-housing-bank-act-1987::14"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::landmark::icici-bank-ltd-v-pradeep-singh",
+          "case::sc2016::2016-7-798-806-en",
+          "case::sc2016::2016-11-723-738-en"
+        ]
+      }
+    },
+    {
+      "qid": "lm69",
+      "query": "Can a new form of a known medicine be patented without showing enhanced therapeutic efficacy?",
+      "targets": [
+        "NOVARTIS (2013)"
+      ],
+      "in_corpus": false,
+      "all": {
+        "rank": null,
+        "top": [
+          "statute::bharatiya-nyaya-sanhita-2023::277",
+          "statute::national-commission-for-indian-system-of-medicine-act-2020::29",
+          "statute::bharatiya-nyaya-sanhita-2023::276"
+        ]
+      },
+      "cases_only": {
+        "rank": null,
+        "top": [
+          "case::sc2016::2016-7-899-911-en",
+          "case::sc2016::2016-1-343-363-en",
+          "case::landmark::maneka-gandhi-v-union-of-india"
+        ]
+      }
+    },
+    {
+      "qid": "lm70",
+      "query": "Must the procedure for depriving a person of liberty, such as impounding a passport, be fair, just and reasonable?",
+      "targets": [
+        "MANEKA GANDHI (1978)"
+      ],
+      "in_corpus": true,
+      "all": {
+        "rank": 2,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors"
+        ]
+      },
+      "cases_only": {
+        "rank": 2,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors"
+        ]
+      }
+    },
+    {
+      "qid": "lm71",
+      "query": "Does the right to life include the right to livelihood of pavement and slum dwellers facing eviction?",
+      "targets": [
+        "OLGA TELLIS (1985)"
+      ],
+      "in_corpus": true,
+      "all": {
+        "rank": 1,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::sc2016::2016-1-447-467-en",
+          "statute::constitution-of-india-1949::21"
+        ]
+      },
+      "cases_only": {
+        "rank": 1,
+        "top": [
+          "case::landmark::olga-tellis-ors-v-bombay-municipal-corporation-ors-etc",
+          "case::sc2016::2016-1-447-467-en",
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors"
+        ]
+      }
+    },
+    {
+      "qid": "lm72",
+      "query": "Is the right to privacy a fundamental right under the Constitution?",
+      "targets": [
+        "PUTTASWAMY (2017)"
+      ],
+      "in_corpus": true,
+      "all": {
+        "rank": 1,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "statute::constitution-of-india-1949::21"
+        ]
+      },
+      "cases_only": {
+        "rank": 1,
+        "top": [
+          "case::landmark::justice-k-s-puttaswamy-retd-and-anr-v-union-of-india-and-ors",
+          "case::landmark::maneka-gandhi-v-union-of-india",
+          "case::sc2016::2016-1-727-761-en"
+        ]
+      }
+    }
+  ]
+}

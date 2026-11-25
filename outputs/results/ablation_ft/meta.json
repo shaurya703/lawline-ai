@@ -9,5 +9,8 @@
     "const_qa",
     "ipc_facts",
     "sc_case"
-  ]
+  ],
+  "chunks": 204426,
+  "right_type": false,
+  "corpus": "v2"
 }

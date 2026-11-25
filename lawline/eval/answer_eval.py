@@ -11,7 +11,7 @@ import argparse, ast, json, random, re, time
 from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
-from ..config import RESULTS_DIR, DATA_RAW, RetrievalConfig, JUDGE_MODEL, GEMINI_MODEL
+from ..config import RESULTS_DIR, DATA_RAW, RetrievalConfig, JUDGE_MODEL, GEMINI_MODEL, CORPUS_VERSION
 from ..generation.llm import LLMClient
 from ..generation.prompts import SYSTEM_PROMPT, USER_TEMPLATE, CLOSED_BOOK_SYSTEM, format_context
 from .gold import load_gold
@@ -142,6 +142,7 @@ def main():
     elif (OUT / "grounded.csv").exists():
         grounded = pd.read_csv(OUT / "grounded.csv")
     s = summarize(aibe, grounded) | {"generator": GEMINI_MODEL, "judge": JUDGE_MODEL, "faiss_tag": a.tag}
+    s["corpus"] = CORPUS_VERSION
     json.dump(s, open(OUT / "summary.json", "w"), indent=2)
     print(json.dumps(s, indent=2))
 

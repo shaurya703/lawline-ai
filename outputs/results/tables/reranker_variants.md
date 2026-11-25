@@ -1,4 +1,4 @@
-**Recall@5 by reranking strategy (fine-tuned embeddings)**
+**Recall@5 by reranking strategy (fine-tuned embeddings, v1 corpus)**
 
 | Reranking strategy                                                |   BNS-QA |   IPC-Facts |   Const-QA |   SC-Case |   Macro |
 |:------------------------------------------------------------------|---------:|------------:|-----------:|----------:|--------:|

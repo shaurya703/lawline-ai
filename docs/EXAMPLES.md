@@ -1,5 +1,7 @@
 # Qualitative examples (shipped configuration: fine-tuned bi-encoder, hybrid + reranker with routing and KG slot)
 
+> **Note.** Recorded on the first corpus (v1). The expanded corpus retrieves judgments as well as provisions for several of these questions.
+
 Generated automatically by `lawline.engine.QueryEngine` (top-5 passages; generator = Gemini flash-lite family). ✔ marks passages the answer actually cites.
 
 ## What is the punishment for cheating under Section 420 IPC?

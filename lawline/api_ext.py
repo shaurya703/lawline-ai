@@ -7,10 +7,11 @@ from pathlib import Path
 import numpy as np, pandas as pd
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
-from .config import RetrievalConfig, RESULTS_DIR, DATA_PROCESSED, MODEL_DIR
+from .config import RetrievalConfig, RESULTS_DIR, DATA_PROCESSED, MODEL_DIR, CORPUS_VERSION
 from .generation.prompts import format_context
 from .index.concepts import CONCEPTS
 from .data.ingest import slug
+from .data.schema import corpus_group, CORPUS_GROUPS
 
 router = APIRouter()
 
@@ -36,11 +37,27 @@ def _csv(p: Path):
 
 
 # ----------------------------------------------------------------------------------------------- stats
+@lru_cache(maxsize=1)
+def _corpus_counts() -> dict:
+    """Document counts taken from the chunks in memory, so the numbers shown always describe the corpus being
+    served (a host can hold older assets than the repository's corpus_stats.json describes)."""
+    groups, types = {}, {}
+    for c in eng().retriever.chunks:
+        if c.doc_id not in types:
+            types[c.doc_id] = c.doc_type
+            g = corpus_group(c.source, c.act); groups[g] = groups.get(g, 0) + 1
+    out = {g: groups[g] for g in CORPUS_GROUPS if groups.get(g)}
+    out.update({"total": len(types), "statutes": sum(t == "statute" for t in types.values()), "cases": sum(t == "case" for t in types.values())})
+    built = _json(DATA_PROCESSED / "corpus_stats.json") or {}
+    out.update({k: built[k] for k in ("hanno_train_rows", "hanno_test_rows") if k in built})
+    return out
+
+
 @router.get("/stats")
 def stats():
-    kg = eng().retriever.kg
-    return {"corpus": _json(DATA_PROCESSED / "corpus_stats.json"), "gold": _json(DATA_PROCESSED / "gold_stats.json"), "kg": kg.stats(),
-            "answer_eval": _json(RESULTS_DIR / "answer_eval/summary.json"), "chunks": len(eng().retriever.chunks)}
+    r = eng().retriever
+    return {"corpus": _corpus_counts(), "gold": _json(DATA_PROCESSED / "gold_stats.json"), "kg": r.kg.stats(),
+            "answer_eval": _json(RESULTS_DIR / "answer_eval/summary.json"), "chunks": len(r.chunks), "index_sizes": getattr(r, "index_sizes", None), "corpus_version": CORPUS_VERSION}
 
 
 # ----------------------------------------------------------------------------------------------- chat
@@ -67,6 +84,7 @@ CHAT_SYS = ("You are LawLine AI, a friendly legal research assistant for Indian 
             "1. Answer the user's ACTUAL question directly in the first sentence (yes/no/it depends + why), then explain simply.\n"
             "2. Base legal claims on the numbered passages and cite them like [2]. If the passages only partly cover it, answer the rest from "
             "well-established general knowledge of Indian law and mark that part '(general note)'. Never refuse just because a passage is missing.\n"
+            "   When a passage is a court judgment, name the case the first time you rely on it, for example 'the Supreme Court held in Lalita Kumari [2] that ...'.\n"
             "3. If the user says they did not understand, re-explain with a concrete everyday example; do not repeat the earlier wording.\n"
             "4. Use the conversation so far to resolve 'this', 'it', 'that'.\n"
             "5. Plain words, short paragraphs or bullets. End with one short line: 'This is information, not legal advice.'\n")
@@ -211,7 +229,18 @@ def provision(doc_id: str):
 def analytics():
     def tm(name):
         return _json(MODEL_DIR / name / "train_meta.json")
-    return {"ablation_base": _csv(RESULTS_DIR / "ablation_base/metrics.csv"), "ablation_ft": _csv(RESULTS_DIR / "ablation_ft/metrics.csv"),
+    def version(results: Path, corpus_stats: Path):          # the headline artefacts of one corpus version
+        return {"ablation_ft": _csv(results / "ablation_ft/metrics.csv"), "landmark": (_json(results / "landmark_eval.json") or {}).get("summary"),
+                "corpus": _json(corpus_stats)}
+    prev = RESULTS_DIR / "v1"                                # results archived before the corpus expansion
+    versions = {"v1": version(prev, prev / "corpus_stats.json"), "v2": version(RESULTS_DIR, DATA_PROCESSED / "corpus_stats.json"),
+                # v2 again, with every query restricted to the document type of its answer: what a perfect statute/judgment router would score
+                "v2_right_type": _csv(RESULTS_DIR / "v2_right_type/ablation_ft/metrics.csv")} if prev.exists() else None
+    def on(meta: Path):                                      # the corpus version a stored result was measured on
+        return (_json(meta) or {}).get("corpus", CORPUS_VERSION)
+    measured = {"answer_eval": on(RESULTS_DIR / "answer_eval/summary.json"), "chunk_sweep": on(RESULTS_DIR / "chunk_sweep_meta.json"),
+                "reranker_legal": on(RESULTS_DIR / "ablation_ft_legalce/meta.json")}
+    return {"corpus_version": CORPUS_VERSION, "measured_on": measured, "corpus_versions": versions, "ablation_base": _csv(RESULTS_DIR / "ablation_base/metrics.csv"), "ablation_ft": _csv(RESULTS_DIR / "ablation_ft/metrics.csv"),
             "ablation_ft_legalce": _csv(RESULTS_DIR / "ablation_ft_legalce/metrics.csv"), "chunk_sweep": _csv(RESULTS_DIR / "chunk_sweep.csv"),
             "latency": _json(RESULTS_DIR / "ablation_ft/latency.json"), "answer_eval": _json(RESULTS_DIR / "answer_eval/summary.json"),
             "grounded": _csv(RESULTS_DIR / "answer_eval/grounded.csv"), "train_biencoder": tm("lawline-bge-small-legal"), "train_reranker": tm("lawline-reranker-legal")}

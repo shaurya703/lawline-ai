@@ -4,6 +4,10 @@
 
 Assets (indices, model, chunks) are pulled once from the public HF dataset into a persistent
 Volume; later cold starts read them from the volume. The FastAPI app is served as an ASGI app.
+Nothing already in the volume is replaced. After the assets repo or outputs/results changes, deploy the new code
+first (it reads both index formats), then clear the volume so it is fetched again, or the old corpus keeps being served:
+    modal volume rm -r lawline-assets /data
+    modal volume rm -r lawline-assets /outputs
 """
 import modal
 

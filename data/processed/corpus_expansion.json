@@ -1,0 +1,51 @@
+{
+  "v1_total": 42868,
+  "key_acts": {
+    "sections": 3111,
+    "acts_completed": 68,
+    "acts_added": 7,
+    "new_acts": {
+      "Income-tax Act, 2025": 534,
+      "Indian Partnership Act, 1932": 73,
+      "Limited Liability Partnership Act, 2008": 88,
+      "Occupational Safety, Health and Working Conditions Code, 2020": 143,
+      "Telecommunications Act, 2023": 62,
+      "Digital Personal Data Protection Act, 2023": 41,
+      "Industrial Relations Code, 2020": 100
+    },
+    "skipped": {
+      "number_present": 6060,
+      "stub_or_repealed": 452,
+      "text_present": 409
+    }
+  },
+  "sc_reports": {
+    "selected": 5368,
+    "kept": 5367,
+    "dropped_short_or_non_english": 1,
+    "pdfs_unreadable": 0,
+    "by_reason": {
+      "long": 2621,
+      "sample": 2609,
+      "landmark": 137
+    },
+    "landmark_entries": 138,
+    "landmark_entries_found": 137,
+    "landmarks_not_found": [
+      "PAI FOUNDATION (2002)"
+    ],
+    "years_under_half_quota": {
+      "2009": 6
+    }
+  },
+  "hc_judgments": {
+    "kept": 2400,
+    "high_courts": 24,
+    "registries": 25,
+    "rejected": {
+      "unreadable": 317,
+      "duplicate": 37
+    },
+    "courts_under_quota": {}
+  }
+}

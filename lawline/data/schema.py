@@ -66,6 +66,23 @@ class Chunk:
         return ", ".join(bits)
 
 
+def corpus_group(source: str, act: str | None) -> str:
+    """The corpus-statistics row a document (or one of its chunks) counts under."""
+    if source == "GSMS-B/knowledge-base": return "key_acts"
+    if source == "SCR/aws-open-data": return "sc_reports"
+    if source == "ecourts/high-courts": return "hc_judgments"
+    if source == "SCR-2016": return "sc2016"
+    if source == "Hanno-Labs/HC-IPC": return "hc_excerpts"
+    if source == "capstone-phase2": return "landmark"
+    if source == "GSMS-B/bns-bnss-bsa": return "bns_family"
+    if source == "indiacode/constitution": return "constitution"
+    if act == "Indian Penal Code, 1860": return "ipc"
+    return "bare_acts"
+
+
+CORPUS_GROUPS = ["bare_acts", "bns_family", "ipc", "constitution", "sc2016", "hc_excerpts", "landmark", "key_acts", "sc_reports", "hc_judgments"]
+
+
 def read_jsonl(path):
     with open(path, encoding="utf-8") as f:
         for line in f:

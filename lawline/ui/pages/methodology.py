@@ -25,8 +25,8 @@ def render():
         st.markdown("#### Benchmark"); st.json(gold_stats())
     st.markdown("""
 #### Data sources
-India Code bare-acts dump (`mratanusarkar/Indian-Laws`), BNS/BNSS/BSA 2023 sections and QA (`GSMS-B`), IPC (`kmeanskaran/ipc-sections` + `Hanno-Labs`), Constitution of India (official text), Supreme Court Reports 2016 (`Shreyasrao`), High-Court excerpts (`Hanno-Labs`), AIBE MCQs (`jmukesh99`). All public; judgments are public records under s.52(1)(q) Copyright Act 1957.
+India Code bare-acts dump (`mratanusarkar/Indian-Laws`), BNS/BNSS/BSA 2023 sections and QA (`GSMS-B`), IPC (`kmeanskaran/ipc-sections` + `Hanno-Labs`), Constitution of India (official text), Supreme Court Reports 2016 (`Shreyasrao`), Patna High Court excerpts (`Hanno-Labs`), AIBE MCQs (`jmukesh99`). The v2 expansion adds Supreme Court Reports 1950–2025 (AWS Open Data *Indian Supreme Court Judgments*, via `labofsahil/Indian-Supreme-Court-Judgments` and `therajasekhar/india-public-supreme-court-judgments`), judgments of 24 other High Courts (`overthelex/indian-court-decisions`) and missing sections of central Acts (`GSMS-B/indian-legal-knowledge-base-json`). All public; judgments are public records under s.52(1)(q) Copyright Act 1957. Details: `docs/DATA_SOURCES.md`.
 
 #### Limitations
-Case-law coverage is partial (SCR 2016, one High Court, seven landmark cases). The generator is a hosted model with a daily free-tier quota. LawLine provides legal **information** grounded in retrieved sources; it is **not legal advice** and can still miss or misread a provision — always verify the cited passage.
+Case-law coverage is a sample, not the full reports: long judgments keep their headnote and final order only, and the oldest reports are scanned text with spelling noise. Adding judgments made the statute benchmarks harder, because a judgment on the same topic can outrank the section a question is about. The generator is a hosted model with a daily free-tier quota. LawLine provides legal **information** grounded in retrieved sources; it is **not legal advice** and can still miss or misread a provision — always verify the cited passage.
 """)
