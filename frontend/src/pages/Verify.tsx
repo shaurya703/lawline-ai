@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
 const SAMPLE = `The accused is charged under Section 420 IPC and Section 120B of the Indian Penal Code, read with Section 66D of the Information Technology Act, 2000. The complainant also invokes Article 21 of the Constitution and Section 138 of the Negotiable Instruments Act, 1881. Counsel cited Section 999 BNS and Section 482 CrPC for quashing.`;
 
 export default function Verify() {
-  const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [out, setOut] = useState<VerifyOut | null>(null);
-  async function run(t = text) { if (t.trim().length < 3) return; setBusy(true); setErr(null); try { setOut(await api.post<VerifyOut>("/verify", { text: t })); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
-  const marked = useMemo(() => { if (!out) return null; let i = 0; const parts: { t: string; c?: VerifyOut["citations"][number] }[] = []; const src = text; out.citations.forEach(c => { const at = src.indexOf(c.span, i); if (at < 0) return; parts.push({ t: src.slice(i, at) }); parts.push({ t: c.span, c }); i = at + c.span.length; }); parts.push({ t: src.slice(i) }); return parts; }, [out, text]);
+  const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [out, setOut] = useState<VerifyOut | null>(null); const [checked, setChecked] = useState("");
+  async function run(t = text) { if (t.trim().length < 3) return; setBusy(true); setErr(null); try { setOut(await api.post<VerifyOut>("/verify", { text: t })); setChecked(t); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
+  const marked = useMemo(() => { if (!out) return null; let i = 0; const parts: { t: string; c?: VerifyOut["citations"][number] }[] = []; const src = checked; out.citations.forEach(c => { const at = src.indexOf(c.span, i); if (at < 0) return; parts.push({ t: src.slice(i, at) }); parts.push({ t: c.span, c }); i = at + c.span.length; }); parts.push({ t: src.slice(i) }); return parts; }, [out, checked]);   // the text that was checked, not what the box holds after later edits
   const share = out?.total ? out.verified / out.total : 0;
   return (
     <Page title="Citation Verifier" desc="Paste a draft, a memo or a machine-written answer. Every “Section X of Y” is checked against the provisions in the corpus, so a section that does not exist is caught before it reaches a filing.">
@@ -19,7 +19,7 @@ export default function Verify() {
           <Field label="Text to check"><Textarea rows={12} value={text} onChange={e => setText(e.target.value)} placeholder="Paste text with statutory citations…" /></Field>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => void run()} disabled={busy || text.trim().length < 3}><ShieldCheck className="h-4 w-4" aria-hidden />{busy ? "Checking…" : "Verify citations"}</Button>
-            <Button variant="ghost" onClick={() => { setText(SAMPLE); void run(SAMPLE); }}>Try a sample</Button>
+            <Button variant="ghost" disabled={busy} onClick={() => { setText(SAMPLE); void run(SAMPLE); }}>Try a sample</Button>
           </div>
         </Card>}>
         {err && <ErrorBox error={err} retry={() => void run()} />}

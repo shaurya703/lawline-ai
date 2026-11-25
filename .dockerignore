@@ -1,12 +1,11 @@
-# The image only needs: pyproject.toml, README.md, lawline/,
-# data/processed/chunks.jsonl, outputs/indices/ and outputs/models/.
+# The image only needs: pyproject.toml, README.md, lawline/, app.py, .streamlit/,
+# data/processed/{chunks,corpus_stats,gold_stats}, the AIBE questions, outputs/indices/, outputs/models/ and outputs/results/.
 # Everything else is build-context weight.
 
 .git
 .github
 .gitignore
 .claude
-.streamlit
 
 .venv
 __pycache__/
@@ -25,13 +24,25 @@ design-system
 scripts
 tests
 
-# data/: only processed/chunks.jsonl is copied in
+# data/: the chunk store, the two stats files and the AIBE questions the API serves
 data/*
 !data/processed
 data/processed/*
 !data/processed/chunks.jsonl
+!data/processed/corpus_stats.json
+!data/processed/gold_stats.json
+!data/raw
+data/raw/*
+!data/raw/jmukesh99__AIBE_mcq
 
-# outputs/: only the prebuilt indices and models are copied in
+# outputs/: prebuilt indices and models, plus the result tables behind /analytics (without the multi-megabyte per-query runs)
 outputs/*
 !outputs/indices
 !outputs/models
+!outputs/results
+outputs/results/**/runs.json
+outputs/results/cache_*
+outputs/results/experiments
+
+# local Streamlit secrets (API keys) never go into an image
+.streamlit/secrets.toml

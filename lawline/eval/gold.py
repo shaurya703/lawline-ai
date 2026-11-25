@@ -9,7 +9,6 @@ All query sets are frozen to data/processed/gold_*.jsonl so every experiment see
 """
 from __future__ import annotations
 import json, random, re
-from collections import defaultdict
 import pandas as pd
 from ..config import DATA_RAW, DATA_PROCESSED, CORPUS_PATH
 from ..data.schema import read_jsonl, write_jsonl

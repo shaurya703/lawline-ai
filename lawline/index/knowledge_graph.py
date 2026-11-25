@@ -51,13 +51,28 @@ ALIASES = {
 SEC_PAT = re.compile(r"\b(?:sections?|sec\.?|s\.|u/s\.?|ss\.)\s*((?:\d+[A-Za-z]{0,2})(?:\s*(?:,|and|&|/)\s*\d+[A-Za-z]{0,2})*)", re.I)
 ART_PAT = re.compile(r"\b(?:articles?|art\.?)\s*((?:\d+[A-Za-z]{0,2})(?:\s*(?:,|and|&|/)\s*\d+[A-Za-z]{0,2})*)", re.I)
 BARE_SEC = re.compile(r"\b(\d{2,3}[A-Z]{1,2})\b")          # 498A, 304B, 120B ...
-_W = r"(?:[A-Z][\w.&'()-]*|of|the|and|for|&)"
-CASE_PAT = re.compile(rf"([A-Z][\w.&'()-]*(?:\s+{_W}){{0,5}})\s+(?:v\.|vs\.?|versus)\s+([A-Z][\w.&'()-]*(?:\s+{_W}){{0,6}})")
+# Party-name tokens are bounded: an unbounded token is rescanned from every capital letter, which is quadratic on long input.
+_W = r"(?:[A-Z][\w.&'()-]{0,40}|of|the|and|for|&)"
+CASE_PAT = re.compile(rf"([A-Z][\w.&'()-]{{0,40}}(?:\s+{_W}){{0,5}})\s+(?:v\.|vs\.?|versus)\s+([A-Z][\w.&'()-]{{0,40}}(?:\s+{_W}){{0,6}})")
 
 
-def _norm_title(t: str) -> str:
+def _norm_title(t: str) -> list[str]:
     t = re.sub(r"\b(m/s|ltd|limited|ors|anr|others|another|the|state of|union of india|&)\b\.?", " ", t.lower())
     return re.sub(r"[^a-z0-9 ]+", " ", t).split()
+
+
+class _KGUnpickler(pickle.Unpickler):
+    """kg.pkl is downloaded from the assets repo, and pickle.load would call whatever a tampered file names. Admit only
+    the types a saved graph is made of; exact (module, name) pairs, since protocol 4 resolves dotted names."""
+    ALLOWED = {("builtins", "list"), ("collections", "defaultdict"), ("networkx.classes.digraph", "DiGraph"),
+               ("networkx.classes.coreviews", "AdjacencyView"),      # views a graph caches once it has been queried
+               *(("networkx.classes.reportviews", n) for n in ("NodeView", "OutEdgeView", "InEdgeView", "DiDegreeView",
+                                                                "InDegreeView", "OutDegreeView"))}
+
+    def find_class(self, module, name):
+        if (module, name) not in self.ALLOWED:
+            raise pickle.UnpicklingError(f"kg.pkl references {module}.{name}, which a knowledge graph never contains")
+        return super().find_class(module, name)
 
 
 class LegalKG:
@@ -140,25 +155,39 @@ class LegalKG:
         return kg
 
     # ------------------------------------------------------------------ query
+    def _lookups(self) -> dict:
+        """Patterns and word sets derived from the graph, built on first use (about 1,300 regexes, more than re caches).
+        Underscore attributes are left out of kg.pkl by save()."""
+        lk = self.__dict__.get("_lk")
+        if lk is None:
+            lk = self._lk = {
+                "aliases": [(a, re.compile(rf"(?<![a-z0-9]){re.escape(a)}(?![a-z0-9])"), n)
+                            for a, n in sorted(self.act_by_alias.items(), key=lambda x: -len(x[0])) if a != "article"],
+                "concepts": [(p, re.compile(rf"(?<![a-z]){re.escape(p)}(?:s|es)?(?![a-z])"))
+                             for p in sorted(self.concept_index, key=len, reverse=True)],
+                "topics": [t for t in self.topic_index if len(t) > 6],
+                "titles": [(tw, n, max(2, int(0.6 * len(tw))))
+                           for tw, n in ((frozenset(_norm_title(t)), n) for t, n in self.case_title_index.items()) if tw],
+            }
+        return lk
+
     def extract_mentions(self, query: str) -> dict:
         q = query.lower()
+        lk = self._lookups()
         acts = []
-        for alias, node in sorted(self.act_by_alias.items(), key=lambda x: -len(x[0])):
-            if alias == "article":
-                continue
-            if re.search(rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])", q):
-                if node not in acts:
-                    acts.append(node)
+        for alias, pat, node in lk["aliases"]:
+            if alias in q and node not in acts and pat.search(q):
+                acts.append(node)
         def nums(m):
             return [x.strip().upper() for x in re.split(r",|and|&|/", m) if x.strip()]
         sections = [n for m in SEC_PAT.findall(query) for n in nums(m)]
         articles = [n for m in ART_PAT.findall(query) for n in nums(m)]
         bare = [b for b in BARE_SEC.findall(query) if b not in sections]
         cases = [f"{a.strip()} v. {b.strip()}" for a, b in CASE_PAT.findall(query)]
-        topics = [t for t in self.topic_index if len(t) > 6 and t in q]
+        topics = [t for t in lk["topics"] if t in q]
         concepts, taken = [], []
-        for phrase in sorted(self.concept_index, key=len, reverse=True):
-            m = re.search(rf"(?<![a-z]){re.escape(phrase)}(?:s|es)?(?![a-z])", q)
+        for phrase, pat in lk["concepts"]:
+            m = pat.search(q) if phrase in q else None
             if m and not any(a <= m.start() < b or a < m.end() <= b for a, b in taken):
                 concepts.append(phrase); taken.append((m.start(), m.end()))
         return {"acts": acts, "sections": sections, "articles": articles, "bare": bare, "cases": cases,
@@ -202,9 +231,8 @@ class LegalKG:
                 node_scores[sec] = max(node_scores[sec], boost)
         for cs in m["cases"]:
             cw = set(_norm_title(cs))
-            for title, node in self.case_title_index.items():
-                tw = set(_norm_title(title))
-                if tw and len(cw & tw) >= max(2, int(0.6 * len(tw))):
+            for tw, node, need in self._lookups()["titles"]:
+                if len(cw & tw) >= need:
                     node_scores[node] = max(node_scores[node], 0.9)
         for t in m["topics"]:
             tn = self.topic_index[t]
@@ -215,7 +243,7 @@ class LegalKG:
         for n, s in list(node_scores.items()):
             if s < 0.5:
                 continue
-            for _, nb, data in self.g.out_edges(n, data=True):
+            for _, nb in self.g.out_edges(n):
                 if self.g.nodes[nb].get("kind") in ("section", "case"):
                     expanded[nb] = max(expanded.get(nb, 0), s * 0.5)
             for nb, _, data in self.g.in_edges(n, data=True):
@@ -233,20 +261,23 @@ class LegalKG:
     def save(self, path: Path):
         path = Path(path); path.mkdir(parents=True, exist_ok=True)
         with open(path / "kg.pkl", "wb") as f:
-            pickle.dump(self.__dict__, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump({k: v for k, v in self.__dict__.items() if not k.startswith("_")}, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     @classmethod
     def load(cls, path: Path) -> "LegalKG":
         obj = cls()
         with open(Path(path) / "kg.pkl", "rb") as f:
-            obj.__dict__.update(pickle.load(f))
+            obj.__dict__.update(_KGUnpickler(f).load())
         return obj
 
     def stats(self) -> dict:
+        if "_stats" in self.__dict__:                      # the graph does not change once it is built or loaded
+            return self._stats
         kinds = defaultdict(int)
         for _, d in self.g.nodes(data=True):
             kinds[d.get("kind")] += 1
         rels = defaultdict(int)
         for _, _, d in self.g.edges(data=True):
             rels[d.get("rel")] += 1
-        return {"nodes": dict(kinds), "edges": dict(rels)}
+        self._stats = {"nodes": dict(kinds), "edges": dict(rels)}
+        return self._stats

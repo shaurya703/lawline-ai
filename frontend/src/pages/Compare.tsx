@@ -18,13 +18,13 @@ export default function Compare() {
   const secs = useFetch(() => q.length > 0 ? api.get<Sec[]>(`/acts/sections?act=${encodeURIComponent(act)}&q=${encodeURIComponent(q)}`) : Promise.resolve([] as Sec[]), [act, q]);
   const cmp = useFetch(() => ids.length >= 2 ? api.post<CompareOut>("/compare", { doc_ids: ids }) : Promise.resolve(null), [ids.join(",")]);
   const setIds = (x: string[]) => setParams(x.length ? { ids: x.join(",") } : {});
-  const labels = useFetch(async () => Promise.all(ids.map(d => api.get<{ citation: string }>(`/provision?doc_id=${encodeURIComponent(d)}`).then(r => r.citation).catch(() => d))), [ids.join(",")]);
+  const labels = useFetch(async () => Object.fromEntries(await Promise.all(ids.map(d => api.get<{ citation: string }>(`/provision?doc_id=${encodeURIComponent(d)}`).then(r => [d, r.citation] as const).catch(() => [d, d] as const)))), [ids.join(",")]);
   const c = cmp.data; const unit = act.startsWith("Constitution") ? "Art." : "s.";
   return (
     <Page title="Compare Provisions" desc="Pick two or three sections from any Acts. LawLine lines them up on scope, ingredients, consequences, who can invoke them and procedure, then explains how they interact.">
       <Card>
         <div className="flex flex-wrap items-center gap-2">
-          {ids.map((d, i) => <span key={d} className="inline-flex items-center gap-2 rounded-md border border-line-strong bg-surface py-1 pl-1.5 pr-1 text-[13px] text-ink"><Mark i={i} />{labels.data?.[i] ?? d}<button onClick={() => setIds(ids.filter(x => x !== d))} aria-label={`Remove ${labels.data?.[i] ?? d}`} className="rounded p-1 text-ink-3 hover:bg-ink/[.06] hover:text-ink"><X className="h-3.5 w-3.5" aria-hidden /></button></span>)}
+          {ids.map((d, i) => <span key={d} className="inline-flex items-center gap-2 rounded-md border border-line-strong bg-surface py-1 pl-1.5 pr-1 text-[13px] text-ink"><Mark i={i} />{labels.data?.[d] ?? d}<button onClick={() => setIds(ids.filter(x => x !== d))} aria-label={`Remove ${labels.data?.[d] ?? d}`} className="rounded p-1 text-ink-3 hover:bg-ink/[.06] hover:text-ink"><X className="h-3.5 w-3.5" aria-hidden /></button></span>)}
           <Caption className="num">{ids.length} of 3 selected{ids.length < 2 ? `. Add ${2 - ids.length} more to compare.` : ids.length < 3 ? ". You can add one more." : "."}</Caption>
         </div>
         {ids.length < 3 && <div className="mt-4 grid gap-3 md:grid-cols-[300px_minmax(0,1fr)]">
@@ -35,7 +35,7 @@ export default function Compare() {
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4"><Caption>Or start from a pair</Caption>{PRESETS.map(([l, v]) => <Chip key={l} active={v.join(",") === ids.join(",")} onClick={() => setIds(v)}>{l}</Chip>)}</div>
       </Card>
 
-      {cmp.error && <ErrorBox error={cmp.error} />}
+      {(cmp.error ?? acts.error ?? secs.error) && <ErrorBox error={(cmp.error ?? acts.error ?? secs.error)!} />}
       {ids.length >= 2 && cmp.loading && <Skeleton className="h-96" />}
       {ids.length < 2 && <Empty icon={<Columns3 className="h-7 w-7" />} title="Select at least two provisions" desc="Search an Act above, or start from one of the suggested pairs." />}
       {c && ids.length >= 2 && !cmp.loading && (<>
@@ -48,7 +48,7 @@ export default function Compare() {
             </Card>))}
         </div>
         <Section title="Comparison" desc="Written by the model from the texts above." flush
-          actions={<PinButton labelled kind="comparison" title={c.docs.map(d => d.citation.split(" — ")[0]).join(" vs ")} body={`${c.analysis.overview}\n\n${c.analysis.matrix.map(r => `**${r.dimension}**: ${r.values.join(" | ")}`).join("\n")}\n\n${c.analysis.interplay}`} meta={{ to: `/app/compare?ids=${ids.join(",")}` }} />}>
+          actions={<PinButton labelled kind="comparison" title={c.docs.map(d => d.citation.split(" — ")[0]).join(" vs ")} body={`${c.analysis.overview}\n\n${c.analysis.matrix.map(r => `**${r.dimension}**: ${r.values.join(" | ")}`).join("\n")}\n\n${c.analysis.interplay}`} meta={{ to: `/app/compare?ids=${encodeURIComponent(ids.join(","))}` }} />}>
           <p className="max-w-[72ch] px-5 pb-4 text-[15px] text-ink">{c.analysis.overview}</p>
           <div className="overflow-x-auto border-t border-line"><table className="tbl"><thead><tr><th className="pl-5">Dimension</th>{c.docs.map((d, i) => <th key={d.doc_id} className="last:pr-5"><span className="inline-flex items-center gap-2 text-ink"><Mark i={i} />{d.citation.split(" — ")[0].slice(0, 40)}</span></th>)}</tr></thead>
             <tbody>{c.analysis.matrix.map(r => <tr key={r.dimension}><td className="whitespace-nowrap pl-5 font-medium text-ink">{r.dimension}</td>{r.values.map((v, i) => <td key={i} className="text-ink-2 last:pr-5">{v}</td>)}</tr>)}</tbody></table></div>

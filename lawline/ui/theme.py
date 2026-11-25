@@ -1,5 +1,6 @@
 """Shared visual theme: dark glass / neon 'command center' look, Plotly template, helpers."""
 from __future__ import annotations
+import html
 import streamlit as st
 import plotly.io as pio
 import plotly.graph_objects as go
@@ -71,6 +72,11 @@ def hero(title: str, subtitle: str, status: str = "ALL SYSTEMS NOMINAL"):
 def kpi(label: str, value, sub: str = ""):
     st.markdown(f"""<div class="ll-card"><div class="ll-kpi-label">{label}</div><div class="ll-kpi">{value}</div>
     <div class="ll-mono">{sub}</div></div>""", unsafe_allow_html=True)
+
+
+def esc(text) -> str:
+    """Escape corpus, model or user text for unsafe_allow_html markup; newlines become <br> so a blank line cannot end the HTML block."""
+    return html.escape(str(text)).replace("\n", "<br>")
 
 
 def badges(sources):

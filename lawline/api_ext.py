@@ -1,19 +1,24 @@
 """Extra API routes for the React front-end (stats, conversational chat, retrieval trace, knowledge graph, provisions,
 analytics data, document analysis, drafting). Mounted onto lawline.api.app."""
 from __future__ import annotations
-import json, re, time, io
+import json, logging, re, time, io
+from typing import Literal
 from functools import lru_cache
 from pathlib import Path
 import numpy as np, pandas as pd
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from pydantic import BaseModel, Field, field_validator
 from .config import RetrievalConfig, RESULTS_DIR, DATA_PROCESSED, MODEL_DIR, CORPUS_VERSION
 from .generation.prompts import format_context
 from .index.concepts import CONCEPTS
 from .data.ingest import slug
 from .data.schema import corpus_group, CORPUS_GROUPS
+from .ratelimit import llm_budget
 
 router = APIRouter()
+LIMITED = [Depends(llm_budget)]
+NO_LLM = "LLM backend not configured."
+DocType = Literal["statute", "case"]
 
 
 def eng():
@@ -21,11 +26,21 @@ def eng():
     return get_engine()
 
 
-def llm(system: str, user: str, max_tokens: int = 900, json_mode: str | None = None) -> str:
+def llm_full(system: str, user: str, max_tokens: int = 900, json_mode: str | dict | None = None) -> tuple[str, str | None]:
+    """(text, model that produced it); the model is None when no backend is configured."""
     e = eng()
     if not e.llm or not e.llm.available:
-        return "LLM backend not configured."
-    return e.llm.complete(system, user, max_tokens=max_tokens, json_mode=json_mode).text
+        return NO_LLM, None
+    try:
+        r = e.llm.complete(system, user, max_tokens=max_tokens, json_mode=json_mode)
+    except RuntimeError as err:
+        logging.getLogger("lawline").warning("language model call failed: %.400s", err)
+        raise HTTPException(503, "The language model is temporarily unavailable. Please try again shortly.")
+    return r.text, r.model
+
+
+def llm(system: str, user: str, max_tokens: int = 900, json_mode: str | dict | None = None) -> str:
+    return llm_full(system, user, max_tokens, json_mode)[0]
 
 
 def _json(p: Path):
@@ -62,18 +77,24 @@ def stats():
 
 # ----------------------------------------------------------------------------------------------- chat
 class Turn(BaseModel):
-    role: str
-    content: str
+    role: str = Field(..., max_length=20)
+    content: str = Field(..., max_length=20000)
 
 
 class ChatIn(BaseModel):
     message: str = Field(..., min_length=2, max_length=4000)
     history: list[Turn] = []
-    style: str = "Plain English"
-    translate: str | None = None
-    doc_types: list[str] = []
+    style: str = Field("Plain English", max_length=40)
+    # a language name goes into the system prompt, so only letters, spaces and ( ) + - are allowed
+    translate: str | None = Field(None, max_length=40, pattern=r"^[A-Za-z][A-Za-z ()+-]*$")
+    doc_types: list[DocType] = Field([], max_length=2)
     final_k: int = Field(5, ge=1, le=10)
     use_reranker: bool = True
+
+    @field_validator("history", mode="before")
+    @classmethod
+    def _last_turns(cls, v):                 # only the last six turns are used, so only those are validated
+        return v[-6:] if isinstance(v, list) else v
 
 
 STYLES = {"Plain English": "Explain in plain, simple English for a non-lawyer. Short sentences.",
@@ -90,7 +111,7 @@ CHAT_SYS = ("You are LawLine AI, a friendly legal research assistant for Indian 
             "5. Plain words, short paragraphs or bullets. End with one short line: 'This is information, not legal advice.'\n")
 
 
-@router.post("/chat")
+@router.post("/chat", dependencies=LIMITED)
 def chat(q: ChatIn):
     e = eng(); t0 = time.perf_counter()
     prior = q.history[-6:]
@@ -101,36 +122,39 @@ def chat(q: ChatIn):
                  f"Conversation:\n{convo}\n\nLatest message: {q.message}", 120)
         if rw and len(rw) < 400:
             search_q = rw.strip().strip('"')
-    cfg = RetrievalConfig(final_k=q.final_k, use_reranker=q.use_reranker, doc_types=tuple(q.doc_types))
+    cfg = RetrievalConfig(final_k=q.final_k, use_reranker=q.use_reranker, doc_types=tuple(sorted(set(q.doc_types))))
     rr = e.retriever.retrieve(search_q, cfg)
     sys_ = CHAT_SYS + "Style instruction: " + STYLES.get(q.style, STYLES["Plain English"])
     user = (f"Conversation so far:\n{convo}\n\n" if convo else "") + f"Passages:\n{format_context(rr.passages)}\n\nUser's latest question: {q.message}\n(Search query used: {search_q})\n\nAnswer:"
-    text = llm(sys_, user, 900) if rr.passages else llm(sys_, f"No passages were retrieved. User's question: {q.message}", 600)
+    text, model = llm_full(sys_, user, 900) if rr.passages else llm_full(sys_, f"No passages were retrieved. User's question: {q.message}", 600)
     cited = sorted({int(n) for grp in re.findall(r"\[((?:\d+\s*,\s*)*\d+)\]", text) for n in re.split(r"\s*,\s*", grp)})
-    translated = llm(f"Translate the following legal answer faithfully into {q.translate}. Keep citation markers like [1].", text, 900) if q.translate else None
-    fu = llm("Suggest three short follow-up questions a user might ask next about Indian law given this exchange. Return a JSON list of strings only.", f"Q: {q.message}\nA: {text[:1200]}", 200)
+    try:                                     # the answer is already written; a failed extra step should not discard it
+        translated = llm(f"Translate the following legal answer faithfully into {q.translate}. Keep citation markers like [1].", text, 900) if q.translate else None
+    except HTTPException:
+        translated = None
     try:
+        fu = llm("Suggest three short follow-up questions a user might ask next about Indian law given this exchange. Return a JSON list of strings only.", f"Q: {q.message}\nA: {text[:1200]}", 200)
         followups = json.loads(re.search(r"\[.*\]", fu, re.S).group(0))[:3]
     except Exception:
         followups = []
     return {"answer": text, "translated": translated, "search_query": search_q, "followups": followups,
             "passages": [{"rank": p.rank, "citation": p.chunk.citation, "text": p.chunk.text, "sources": p.sources, "score": p.score, "doc_id": p.chunk.doc_id, "used": p.rank in cited} for p in rr.passages],
-            "timings_ms": {**rr.timings_ms, "total": (time.perf_counter() - t0) * 1000}, "model": e.llm.gemini_model if e.llm else None}
+            "timings_ms": {**rr.timings_ms, "total": (time.perf_counter() - t0) * 1000}, "model": model}
 
 
 # ----------------------------------------------------------------------------------------------- retrieval trace
 class TraceIn(BaseModel):
-    question: str = Field(..., min_length=2)
+    question: str = Field(..., min_length=2, max_length=4000)
     top_k_each: int = Field(30, ge=5, le=50)
     final_k: int = Field(5, ge=1, le=10)
-    doc_types: list[str] = []
+    doc_types: list[DocType] = Field([], max_length=2)
     auto_route: bool = True
 
 
 @router.post("/retrieve/trace")
 def trace(q: TraceIn):
     e = eng(); by = e.retriever.by_id
-    rr = e.retriever.retrieve(q.question, RetrievalConfig(top_k_each=q.top_k_each, final_k=q.final_k, doc_types=tuple(q.doc_types), auto_route=q.auto_route))
+    rr = e.retriever.retrieve(q.question, RetrievalConfig(top_k_each=q.top_k_each, final_k=q.final_k, doc_types=tuple(sorted(set(q.doc_types))), auto_route=q.auto_route))
     def lst(ids):
         return [{"chunk_id": c, "citation": by[c].citation, "doc_type": by[c].doc_type} for c in ids if c in by]
     return {"route": "narrative" if rr.timings_ms.get("route") else "question", "mentions": e.retriever.kg.extract_mentions(q.question),
@@ -150,7 +174,7 @@ def kg_concepts():
 
 
 @router.get("/kg/search")
-def kg_search(q: str, limit: int = 20):
+def kg_search(q: str = Query(..., max_length=200), limit: int = Query(20, ge=1, le=50)):
     G = eng().retriever.kg.g; ql = q.lower(); out = []
     for n, d in G.nodes(data=True):
         lab = d.get("label", "")
@@ -161,24 +185,34 @@ def kg_search(q: str, limit: int = 20):
     return out
 
 
+def _neighbourhood(G, node: str, hops: int, max_nodes: int) -> list[str]:
+    """Breadth-first, in the graph's own order: the nearest nodes are kept when the limit cuts, and the same request
+    always returns the same nodes (a set would be cut in hash order, which changes with every restart)."""
+    order, seen, frontier = [node], {node}, [node]
+    for _ in range(hops):
+        nxt = []
+        for n in frontier:
+            for m in (*G.successors(n), *G.predecessors(n)):
+                if m not in seen:
+                    seen.add(m); nxt.append(m)
+        order += nxt; frontier = nxt
+        if len(order) >= max_nodes:
+            break
+    return order[:max_nodes]
+
+
 @router.get("/kg/neighborhood")
-def kg_neighborhood(node: str, hops: int = 1, max_nodes: int = 60):
+def kg_neighborhood(node: str = Query(..., max_length=500), hops: int = Query(1, ge=1, le=2), max_nodes: int = Query(60, ge=1, le=200)):
     import networkx as nx
     G = eng().retriever.kg.g
     if node not in G:
         raise HTTPException(404, "node not found")
-    nodes = {node}; frontier = {node}
-    for _ in range(max(1, min(hops, 2))):
-        nxt = set()
-        for n in frontier:
-            nxt |= set(G.successors(n)) | set(G.predecessors(n))
-        nodes |= nxt; frontier = nxt
-        if len(nodes) > max_nodes:
-            break
-    nodes = [node] + [n for n in nodes if n != node][: max_nodes - 1]
-    H = G.subgraph(nodes); pos = nx.spring_layout(H, seed=3, k=0.9 / max(1, np.sqrt(len(nodes))))
-    return {"nodes": [{"id": n, "label": H.nodes[n].get("label", n), "kind": H.nodes[n].get("kind"), "degree": G.degree(n), "x": float(pos[n][0]), "y": float(pos[n][1]), "doc_id": H.nodes[n].get("doc_id")} for n in H],
-            "edges": [{"source": u, "target": v, "rel": d.get("rel")} for u, v, d in H.edges(data=True)]}
+    nodes = _neighbourhood(G, node, hops, max_nodes); keep = set(nodes)
+    H = nx.DiGraph(); H.add_nodes_from(nodes)       # built in breadth-first order (a subgraph view iterates in hash order), so the layout repeats
+    H.add_edges_from((u, v, {"rel": d.get("rel")}) for u in nodes for v, d in G[u].items() if v in keep)
+    pos = nx.spring_layout(H, seed=3, k=0.9 / max(1, np.sqrt(len(nodes))))
+    return {"nodes": [{"id": n, "label": G.nodes[n].get("label", n), "kind": G.nodes[n].get("kind"), "degree": G.degree(n), "x": float(pos[n][0]), "y": float(pos[n][1]), "doc_id": G.nodes[n].get("doc_id")} for n in nodes],
+            "edges": [{"source": u, "target": v, "rel": d["rel"]} for u, v, d in H.edges(data=True)]}
 
 
 # ----------------------------------------------------------------------------------------------- provisions
@@ -252,7 +286,7 @@ class TextIn(BaseModel):
     brief: bool = False
 
 
-@router.post("/analyze")
+@router.post("/analyze", dependencies=LIMITED)
 def analyze(q: TextIn):
     e = eng(); kg = e.retriever.kg; by = e.retriever.by_id; G = kg.g
     m = kg.extract_mentions(q.text)
@@ -271,15 +305,31 @@ def analyze(q: TextIn):
     return out
 
 
-@router.post("/analyze/upload")
-async def analyze_upload(file: UploadFile = File(...), brief: bool = False):
-    data = await file.read()
-    if file.filename.lower().endswith(".pdf"):
-        from pypdf import PdfReader
-        text = "\n".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(data)).pages[:30])
+MAX_UPLOAD = 10 * 1024 * 1024
+
+
+@router.post("/analyze/upload", dependencies=LIMITED)
+def analyze_upload(file: UploadFile = File(...), brief: bool = False):     # sync, so parsing and the model call run off the event loop
+    data = file.file.read(MAX_UPLOAD + 1)
+    if len(data) > MAX_UPLOAD:
+        raise HTTPException(413, "file too large (10 MB limit)")
+    if (file.filename or "").lower().endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            raise HTTPException(501, "PDF support is not installed on this server")
+        try:
+            text = "\n".join((p.extract_text() or "") for p in PdfReader(io.BytesIO(data)).pages[:30])
+        except Exception:
+            raise HTTPException(400, "could not read that PDF")
     else:
         text = data.decode(errors="ignore")
-    return analyze(TextIn(text=text[:60000] or "x" * 20, brief=brief))
+    text = text.strip()
+    if len(text) < 20:
+        raise HTTPException(400, "no readable text found in the file (scanned PDFs need OCR)")
+    out = analyze(TextIn(text=text[:60000], brief=brief))
+    out["text"] = text[:60000]            # the Judgment Summarizer uploads a PDF only to read its text back
+    return out
 
 
 TEMPLATES = {
@@ -299,13 +349,21 @@ def templates():
 
 
 class DraftIn(BaseModel):
-    template: str
-    fields: dict[str, str]
-    tone: str = "Standard"
-    language: str = "English"
+    template: str = Field(..., max_length=40)
+    fields: dict[str, str] = Field(..., max_length=20)
+    # tone and language go into the system prompt
+    tone: str = Field("Standard", max_length=40, pattern=r"^[\w /+().,&-]+$")
+    language: str = Field("English", max_length=40, pattern=r"^[\w /+().,&-]+$")
+
+    @field_validator("fields")
+    @classmethod
+    def _bounded(cls, v):
+        if any(len(k) > 100 or len(x) > 10000 for k, x in v.items()):
+            raise ValueError("field names are limited to 100 characters and values to 10000")
+        return v
 
 
-@router.post("/draft")
+@router.post("/draft", dependencies=LIMITED)
 def draft(q: DraftIn):
     if q.template not in TEMPLATES:
         raise HTTPException(404, "unknown template")

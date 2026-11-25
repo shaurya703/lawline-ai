@@ -1,10 +1,10 @@
 """Cached engine + data loaders shared by all pages."""
 from __future__ import annotations
-import json, os
+import json, logging, os
 from pathlib import Path
 import pandas as pd
 import streamlit as st
-from ..config import ROOT, RESULTS_DIR, FIG_DIR, DATA_PROCESSED, MODEL_DIR, INDEX_DIR, BASE_EMBEDDING_MODEL
+from ..config import RESULTS_DIR, DATA_PROCESSED, MODEL_DIR, INDEX_DIR, BASE_EMBEDDING_MODEL
 
 FT_MODEL = str(MODEL_DIR / "lawline-bge-small-legal")
 
@@ -92,12 +92,13 @@ def case_index():
     return pd.DataFrame(rows.values())
 
 
-def llm_text(system: str, user: str, max_tokens: int = 900) -> str:
+def llm_text(system: str, user: str, max_tokens: int = 900, fallback: str | None = None) -> str:
+    """LLM text. If no backend is configured or the call fails, return `fallback` when given, else a short notice."""
     eng = engine()
     if not eng.llm or not eng.llm.available:
-        return "LLM backend not configured (set GEMINI_API_KEY)."
+        return fallback if fallback is not None else "LLM backend not configured (set GEMINI_API_KEY)."
     try:
-        eng.llm.max_tokens = max_tokens
-        return eng.llm.complete(system, user).text
+        return eng.llm.complete(system, user, retries=1, max_tokens=max_tokens).text
     except Exception as e:
-        return f"LLM error: {e}"
+        logging.getLogger("lawline").warning("LLM call failed: %s", e)
+        return fallback if fallback is not None else "The answer generator is unavailable right now (quota or network). Please try again later."

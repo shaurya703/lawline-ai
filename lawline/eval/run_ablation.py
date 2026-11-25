@@ -5,9 +5,8 @@ combination is then fused with RRF offline and optionally reranked with the cros
 (query, chunk)). Metrics are document-level (chunks are collapsed to their parent section / judgment).
 """
 from __future__ import annotations
-import argparse, hashlib, json, time, itertools
+import argparse, hashlib, json, time
 from collections import defaultdict
-from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ChevronRight, Download, ExternalLink, FolderOpen, Printer, Trash2 } from "lucide-react";
 import { annotate, files, unpin, type FileKind } from "@/lib/store";
 import { Button, Card, Chip, Empty, Field, IconButton, Input, Page, Tag, Textarea } from "@/components/ui";
-import { download, printSection } from "@/lib/export";
+import { download, esc, printSection } from "@/lib/export";
 import Md, { toHtml } from "@/components/Md";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +14,7 @@ export default function CaseFilesPanel({ compact, onNavigate }: { compact?: bool
   const { items, matter } = files.use(); const nav = useNavigate(); const [kind, setKind] = useState<FileKind | "all">("all"); const [openId, setOpenId] = useState<string | null>(null); const [q, setQ] = useState("");
   const list = items.filter(i => (kind === "all" || i.kind === kind) && (!q || (i.title + i.body).toLowerCase().includes(q.toLowerCase())));
   const exportAll = () => download(`${matter.replace(/\W+/g, "_")}_casefile.md`, `# ${matter}\n\n_Exported ${new Date().toLocaleString()} from LawLine AI_\n\n` + items.map(i => `## [${i.kind}] ${i.title}\n\n${i.body}\n\n${i.note ? `> Note: ${i.note}\n\n` : ""}`).join("---\n\n"));
-  const printAll = () => printSection(matter, items.map(i => `<h2>${i.title}</h2>${toHtml(i.body)}${i.note ? `<p><i>Note: ${i.note}</i></p>` : ""}`).join("<hr/>"));
+  const printAll = () => printSection(matter, items.map(i => `<h2>${esc(i.title)}</h2>${toHtml(i.body)}${i.note ? `<p><i>Note: ${esc(i.note)}</i></p>` : ""}`).join("<hr/>"));
   const kinds = KINDS.filter(k => k.id === "all" || items.some(i => i.kind === k.id));
   const actions = items.length > 0 && <><Button size="sm" onClick={exportAll}><Download className="h-4 w-4" />Export</Button><Button size="sm" onClick={printAll}><Printer className="h-4 w-4" />Print</Button><Button size="sm" variant="danger" onClick={() => { if (confirm("Remove every saved item from this case file?")) files.set({ items: [] }); }}><Trash2 className="h-4 w-4" />Clear</Button></>;
   const body = (

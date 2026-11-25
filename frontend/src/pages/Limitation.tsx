@@ -30,7 +30,7 @@ export default function Limitation() {
       </Card>
       <Callout tone="warn">Indicative only. Court holidays, condonation of delay and the exclusions in sections 4 to 15 of the Limitation Act are not applied.</Callout>
       {r.error && <ErrorBox error={r.error} />}
-      {!r.data ? !r.error && <Skeleton className="h-96" /> : !rows.length ? <Caption className="py-8 text-center">No matter matches that filter.</Caption> : (<>
+      {r.loading || !r.data ? !r.error && <Skeleton className="h-96" /> : !rows.length ? <Caption className="py-8 text-center">No matter matches that filter.</Caption> : (<>
         <Section title="Days remaining" desc="Counted from today. A bar to the left of zero is a period that has already run out.">
           <Chart height={Math.max(260, rows.length * 26 + 60)} data={[{ type: "bar", orientation: "h", y: rows.map(x => x.matter.slice(0, 44)), x: rows.map(x => x.days_left ?? 0), marker: { color: rows.map(x => band(x).color) }, text: rows.map(x => x.deadline ? fmt(x.deadline) : "no fixed period"), textposition: "outside", cliponaxis: false, hovertemplate: "%{y}<br>%{x} days · %{text}<extra></extra>" }]}
             layout={{ margin: { l: 280, r: 110, t: 8, b: 44 }, xaxis: { showgrid: true, title: { text: "days left" } }, yaxis: { autorange: "reversed", showgrid: false } }} />

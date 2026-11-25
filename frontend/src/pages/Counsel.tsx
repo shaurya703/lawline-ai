@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowUp, ChevronRight, Download, Eraser, Mic, MicOff, Printer, RefreshCw, Volume2, VolumeX, Wand2 } from "lucide-react";
 import { api, type ChatOut, type Simplified } from "@/lib/api";
-import { logActivity, settings } from "@/lib/store";
+import { logActivity, settings, toast } from "@/lib/store";
 import { useDictation, speak, stopSpeaking } from "@/lib/voice";
 import { download, printSection } from "@/lib/export";
 import { Callout, Chip, CopyButton, ErrorBox, IconButton, Page, Passages, PinButton, Progress, Tag } from "@/components/ui";
@@ -24,30 +24,33 @@ const opt = "h-8 cursor-pointer rounded-md border border-transparent bg-transpar
 
 export default function Counsel() {
   const [params, setParams] = useSearchParams(); const st = settings.use();
-  const [msgs, setMsgs] = useState<Msg[]>(() => JSON.parse(sessionStorage.getItem("lawline.chat") || "[]"));
+  // Blocked storage throws on access; the conversation then lives only as long as the page.
+  const [msgs, setMsgs] = useState<Msg[]>(() => { try { const v: unknown = JSON.parse(sessionStorage.getItem("lawline.chat") || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } });
   const [q, setQ] = useState(""); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [stage, setStage] = useState(0);
   const [style, setStyle] = useState(st.style); const [lang, setLang] = useState(st.lang); const [scope, setScope] = useState("all"); const [speaking, setSpeaking] = useState(false);
   const endRef = useRef<HTMLDivElement>(null); const boxRef = useRef<HTMLTextAreaElement>(null); const sending = useRef(false);
   const dict = useDictation(useCallback((t: string) => setQ(t), []));
-  useEffect(() => { sessionStorage.setItem("lawline.chat", JSON.stringify(msgs.map(m => ({ ...m, fresh: false })))); if (msgs.length) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs]);
+  useEffect(() => { try { sessionStorage.setItem("lawline.chat", JSON.stringify(msgs.map(m => ({ ...m, fresh: false })))); } catch { /* full or blocked */ } if (msgs.length) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs]);
   useEffect(() => { const pq = params.get("q"); if (pq) { setParams({}); void ask(pq); } // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params]);
+  useEffect(() => stopSpeaking, []);
   useEffect(() => { if (!busy) { setStage(0); return; } const id = setInterval(() => setStage(s => Math.min(4, s + 1)), 900); return () => clearInterval(id); }, [busy]);
   useEffect(() => { const h = (e: KeyboardEvent) => { const tag = (e.target as HTMLElement)?.tagName; if (e.key === "m" && tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT" && st.voice && dict.supported) dict.toggle(); }; window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [dict, st.voice]);
 
-  async function ask(text: string) {
+  async function ask(text: string, prior = msgs) {
     const t = text.trim(); if (!t || sending.current) return; // a ref, not state: two calls in the same tick must not both send
     sending.current = true; setErr(null); setBusy(true); setQ(""); stopSpeaking(); setSpeaking(false); if (boxRef.current) boxRef.current.style.height = "auto";
-    const history = msgs.map(m => ({ role: m.role, content: m.content }));
+    const history = prior.map(m => ({ role: m.role, content: m.content }));
     setMsgs(m => [...m, { role: "user", content: t }]);
     try {
       const out = await api.post<ChatOut>("/chat", { message: t, history, style, translate: lang === "—" ? null : lang, doc_types: scope === "all" ? [] : [scope], use_reranker: st.rerank });
       const content = out.answer + (out.translated ? `\n\n**${lang}:**\n${out.translated}` : "");
       setMsgs(m => [...m, { role: "assistant", content, data: out, fresh: true }]); logActivity("counsel", t, "/app/counsel");
-      if (st.autoSpeak) { speak(out.answer); setSpeaking(true); }
+      if (st.autoSpeak) setSpeaking(speak(out.answer, undefined, () => setSpeaking(false)));
     } catch (e) { setErr(String(e)); setMsgs(m => m.slice(0, -1)); setQ(t); } finally { sending.current = false; setBusy(false); }
   }
-  const regenerate = () => { const lastUser = [...msgs].reverse().find(m => m.role === "user"); if (!lastUser) return; setMsgs(m => m.slice(0, m.length - (m[m.length - 1].role === "assistant" ? 2 : 1))); setTimeout(() => void ask(lastUser.content), 0); };
+  // The question being answered again, and its old answer, must not also be sent as history.
+  const regenerate = () => { const lastUser = [...msgs].reverse().find(m => m.role === "user"); if (!lastUser) return; const keep = msgs.slice(0, msgs.length - (msgs[msgs.length - 1].role === "assistant" ? 2 : 1)); setMsgs(keep); void ask(lastUser.content, keep); };
   const transcript = msgs.map(m => `**${m.role.toUpperCase()}**: ${m.content}`).join("\n\n");
   const questions = msgs.filter(m => m.role === "user").length; const citations = msgs.reduce((n, m) => n + (m.data?.passages.filter(p => p.used).length ?? 0), 0);
   const empty = !msgs.length && !busy;
@@ -58,7 +61,7 @@ export default function Counsel() {
         <span className="num mr-1 text-[13px] text-ink-3">{questions} {questions === 1 ? "question" : "questions"} · {citations} cited</span>
         <IconButton label="Export the conversation as Markdown" onClick={() => download("lawline_transcript.md", transcript)}><Download className="h-4 w-4" /></IconButton>
         <IconButton label="Print the conversation" onClick={() => printSection("LawLine consultation", msgs.map(m => `<h3>${m.role === "user" ? "You" : "LawLine"}</h3>${toHtml(m.content)}`).join(""))}><Printer className="h-4 w-4" /></IconButton>
-        <IconButton label="Clear the conversation" onClick={() => { setMsgs([]); stopSpeaking(); }}><Eraser className="h-4 w-4" /></IconButton>
+        <IconButton label="Clear the conversation" disabled={busy} onClick={() => { setMsgs([]); stopSpeaking(); }}><Eraser className="h-4 w-4" /></IconButton>
       </>}>
       <div className="flex min-h-[calc(100vh-260px)] flex-col">
         <div className="flex-1" aria-live="polite">
@@ -69,7 +72,7 @@ export default function Counsel() {
           )}
           {msgs.map((m, i) => m.role === "user"
             ? <h2 key={i} className={cn("font-serif text-[22px] font-medium leading-snug text-ink", i > 0 && "mt-9 border-t border-line pt-9")}>{m.content}</h2>
-            : <div key={i} className="mt-3"><Answer m={m} onFollow={ask} onRegenerate={i === msgs.length - 1 ? regenerate : undefined} speaking={speaking} setSpeaking={setSpeaking} typewriter={st.typewriter && !!m.fresh} /></div>)}
+            : <div key={i} className="mt-3"><Answer m={m} question={msgs[i - 1]?.content ?? ""} onFollow={ask} onRegenerate={i === msgs.length - 1 ? regenerate : undefined} speaking={speaking} setSpeaking={setSpeaking} typewriter={st.typewriter && !!m.fresh} /></div>)}
           {busy && <div className="mt-4 max-w-sm" role="status">
             <div className="text-[13.5px] text-ink-2">{STAGES[stage]}…</div>
             <div className="mt-2 flex gap-1">{STAGES.map((_, k) => <span key={k} className={cn("h-1 flex-1 rounded-full transition-colors", k <= stage ? "bg-ink" : "bg-line")} />)}</div>
@@ -111,13 +114,13 @@ function Timings({ t, model }: { t: Record<string, number>; model?: string }) {
   );
 }
 
-function Answer({ m, onFollow, onRegenerate, speaking, setSpeaking, typewriter }: { m: Msg; onFollow: (q: string) => void; onRegenerate?: () => void; speaking: boolean; setSpeaking: (v: boolean) => void; typewriter: boolean }) {
+function Answer({ m, question, onFollow, onRegenerate, speaking, setSpeaking, typewriter }: { m: Msg; question: string; onFollow: (q: string) => void; onRegenerate?: () => void; speaking: boolean; setSpeaking: (v: boolean) => void; typewriter: boolean }) {
   const d = m.data!; const { shown, done } = useTypewriter(m.content, typewriter); const [open, setOpen] = useState(false); const [simple, setSimple] = useState<Simplified | null>(null); const [simpleBusy, setSimpleBusy] = useState(false);
   const cited = d.passages.filter(p => p.used).length;
   const conf = Math.min(1, 0.35 + 0.13 * cited + (d.passages.some(p => p.used && p.sources.includes("kg")) ? 0.2 : 0));
-  const simplify = async () => { setSimpleBusy(true); try { setSimple(await api.post<Simplified>("/simplify", { text: d.answer, level: "12-year-old" })); } finally { setSimpleBusy(false); } };
+  const simplify = async () => { setSimpleBusy(true); try { setSimple(await api.post<Simplified>("/simplify", { text: d.answer, level: "12-year-old" })); } catch (e) { toast(String(e), "err"); } finally { setSimpleBusy(false); } };
   const statutes = d.passages.filter(p => p.used && p.doc_id?.startsWith("statute::")).slice(0, 4);
-  const rewritten = d.search_query && d.search_query.toLowerCase() !== m.content.slice(0, 20).toLowerCase();
+  const rewritten = d.search_query && d.search_query.trim().toLowerCase() !== question.trim().toLowerCase();
   return (
     <div>
       <Md text={shown} />{!done && <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-ink align-middle" />}
@@ -130,7 +133,7 @@ function Answer({ m, onFollow, onRegenerate, speaking, setSpeaking, typewriter }
             <span className="flex items-center gap-2 text-[13px] text-ink-3" title="An estimate from how many retrieved passages the answer cites, and whether a knowledge-graph match is among them.">Grounding <Progress value={conf} tone={conf > 0.7 ? "ok" : "ink"} className="w-14" /> <span className="num text-ink-2">{Math.round(conf * 100)}%</span></span>
             <span className="ml-auto flex items-center">
               <IconButton label="Explain in simpler words" onClick={simplify} disabled={simpleBusy || !!simple}><Wand2 className={cn("h-4 w-4", simpleBusy && "animate-pulse")} /></IconButton>
-              <IconButton label={speaking ? "Stop reading" : "Read aloud"} onClick={() => { if (speaking) { stopSpeaking(); setSpeaking(false); } else { speak(d.answer); setSpeaking(true); } }}>{speaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</IconButton>
+              <IconButton label={speaking ? "Stop reading" : "Read aloud"} onClick={() => { if (speaking) { stopSpeaking(); setSpeaking(false); } else setSpeaking(speak(d.answer, undefined, () => setSpeaking(false))); }}>{speaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</IconButton>
               <CopyButton text={d.answer} />
               <PinButton kind="answer" title={m.content.slice(0, 80)} body={d.answer + "\n\n" + d.passages.filter(p => p.used).map(p => `[${p.rank}] ${p.citation}`).join("\n")} meta={{ to: "/app/counsel" }} />
               {onRegenerate && <IconButton label="Answer again" onClick={onRegenerate}><RefreshCw className="h-4 w-4" /></IconButton>}

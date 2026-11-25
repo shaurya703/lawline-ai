@@ -76,6 +76,10 @@ contain the opening of the next reported judgment (flagged `runs_on`); the per-y
 2009 is almost absent; 85 High Court judgments are dated 2026; the bi-encoder was fine-tuned on v1 training pairs and
 was not retrained.
 
+The v1 figures quoted for comparison were measured with 69,149 of v1's 69,260 chunks in the dense index: 92 IPC
+general-part sections were added to the v1 corpus after that index was built. The v2 indices are built together
+(204,426 chunks in each), and the retriever now warns if they are not.
+
 Download the raw files into `data/raw/` before running the expansion (about 13 GB; `pdftotext` from poppler is needed):
 
 ```python

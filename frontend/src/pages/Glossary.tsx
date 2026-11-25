@@ -14,7 +14,7 @@ export default function Glossary() {
   return (
     <Page narrow title="Glossary" desc="Terms you will meet in FIRs, notices and judgments, each explained in a sentence and linked to the provisions that define or use it.">
       <div>
-        <Input aria-label="Search the glossary" value={q} onChange={e => { setQ(e.target.value); setParams(e.target.value ? { q: e.target.value } : {}); }} placeholder="Search terms, e.g. bail, writ, decree…" />
+        <Input aria-label="Search the glossary" value={q} onChange={e => { setQ(e.target.value); setParams(e.target.value ? { q: e.target.value } : {}, { replace: true }); }} placeholder="Search terms, e.g. bail, writ, decree…" />
         <div className="mt-3 flex flex-wrap gap-0.5" role="group" aria-label="Filter by first letter">{"ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(L => <button key={L} disabled={!letters.has(L)} aria-pressed={letter === L} onClick={() => setLetter(letter === L ? null : L)} className={cn("h-7 w-7 rounded text-[13px] transition-colors disabled:text-line-strong", letter === L ? "bg-ink font-medium text-white" : "text-ink-2 enabled:hover:bg-ink/[.06]")}>{L}</button>)}</div>
       </div>
       {g.error ? <ErrorBox error={g.error} /> : !g.data ? <Skeleton className="h-80" /> : !rows.length ? <Empty icon={<BookMarked className="h-7 w-7" />} title="No term matches" desc={<>Try a shorter search, or <Link className="link" to={`/app/counsel?q=${encodeURIComponent(`What does "${q}" mean in Indian law?`)}`}>ask Counsel</Link>.</>} /> : (
@@ -29,7 +29,7 @@ export default function Glossary() {
                   {r.provisions.length > 0 && <span className="num mt-1 shrink-0 text-[12.5px] text-ink-3">{r.provisions.length} {r.provisions.length === 1 ? "provision" : "provisions"}</span>}
                 </button>
                 {isOpen && <div className="flex flex-wrap items-center gap-2 px-5 pb-4 pl-[46px] text-[13px]">
-                  {r.provisions.map(p => <Link key={p.act + p.section} to={`/app/provisions?act=${encodeURIComponent(p.act)}&sec=${p.section}`}><Tag tone="accent" className="hover:border-accent">{p.act.split(",")[0]} s.{p.section}</Tag></Link>)}
+                  {r.provisions.map(p => <Link key={p.act + p.section} to={`/app/provisions?act=${encodeURIComponent(p.act)}&sec=${encodeURIComponent(p.section)}`}><Tag tone="accent" className="hover:border-accent">{p.act.split(",")[0]} s.{p.section}</Tag></Link>)}
                   <Link to={`/app/counsel?q=${encodeURIComponent(`Explain "${r.term}" with an example`)}`} className="link">Ask Counsel for an example</Link>
                 </div>}
               </div>); })}

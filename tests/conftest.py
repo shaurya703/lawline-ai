@@ -1,5 +1,5 @@
 import pytest
-from lawline.data.schema import Document, Chunk
+from lawline.data.schema import Document
 
 
 @pytest.fixture

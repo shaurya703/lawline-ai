@@ -2,15 +2,15 @@
 argument arena, offence lookup, provision comparison, plain-language simplifier, glossary, rights guides,
 limitation calculator, AIBE trainer and citation verifier. Mounted onto lawline.api.app."""
 from __future__ import annotations
-import ast, csv, json, re, random
+import ast, csv, json, logging, re, random
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from .config import RetrievalConfig, DATA_RAW
 from .index.concepts import CONCEPTS, IPC, BNS, CRPC, BNSS, IEA, BSA, COI, ICA, NIA, HMA, DVA, CPA, RTI, ITA, MVA, LIM
-from .api_ext import eng, llm, _statutes
+from .api_ext import eng, llm, _statutes, LIMITED, NO_LLM
 
 router = APIRouter()
 PAIRS = [(IPC, BNS), (CRPC, BNSS), (IEA, BSA)]
@@ -30,18 +30,23 @@ def parse_json(txt: str):
     return None
 
 
-def llm_json(system: str, user: str, max_tokens: int = 1200, kind: str = "object"):
+def llm_json(system: str, user: str, max_tokens: int = 1200, kind: str = "object", schema: dict | None = None):
     """Ask for JSON in the backend's JSON mode. In free-text mode the model drops a closing brace on nested
     schemas often enough to matter (about half of /argue replies), so the syntax is left to the backend, and
-    one more attempt is made if a reply still does not parse (e.g. cut off at the token limit)."""
+    one more attempt is made if a reply still does not parse (e.g. cut off at the token limit). JSON mode alone
+    still loses a brace now and then on deeply nested replies: pass a `schema` for those and the shape is enforced."""
     txt = ""
     for _ in range(2):
-        txt = llm(system + "\nReturn ONLY valid JSON, no markdown fences.", user, max_tokens, json_mode=kind)
+        txt = llm(system + "\nReturn ONLY valid JSON, no markdown fences.", user, max_tokens, json_mode=schema or kind)
+        if txt == NO_LLM:
+            raise HTTPException(503, "No LLM backend is configured on this server.")
         out = parse_json(txt)
-        if out is not None:
+        if isinstance(out, dict if kind == "object" else list):   # JSON mode guarantees syntax, not the shape asked for
             return out
+        # the reply stays in the server log and out of the error body, which goes to the client
+        logging.getLogger("lawline").warning("unusable JSON reply (%d chars, limit %d tokens), ends: %r", len(txt), max_tokens, txt[-160:])
     if not re.search(r"[\[{]", txt):
-        raise HTTPException(502, f"model returned no JSON: {txt[:200]}")
+        raise HTTPException(502, "model returned no JSON")
     raise HTTPException(502, "model returned malformed JSON")
 
 
@@ -81,7 +86,7 @@ def transition_table():
             olds = [s for a, s in provs if a == old]; news = [s for a, s in provs if a == new]
             if olds and news:
                 for i, o in enumerate(olds):
-                    n = news[min(i, len(news) - 1)] if len(news) < len(olds) else news[i] if i < len(news) else news[-1]
+                    n = news[min(i, len(news) - 1)]
                     key = (old, o)
                     r = rows.setdefault(key, {"old_act": old, "old_section": o, "new_act": new, "new_sections": [], "concepts": []})
                     if n not in r["new_sections"]:
@@ -99,7 +104,14 @@ def transition_map():
     return transition_table()
 
 
-@router.get("/transition")
+@lru_cache(maxsize=4096)                     # depends only on two statute texts; failures raise and are not cached
+def _transition_diff(old_act: str, old_sec: str, new_act: str, new_sec: str):
+    old, new = prov_by(old_act, old_sec), prov_by(new_act, new_sec)
+    return llm_json("You compare an old Indian statutory provision with its 2023 replacement. Output JSON: {\"summary\": str (2 sentences), \"changes\": [str, ...] (max 5 concrete differences: punishment, scope, new ingredients, renumbering), \"unchanged\": [str,...] (max 3), \"severity_old\": str, \"severity_new\": str}",
+                    f"OLD ({old['act']} s.{old['section']}):\n{old['text'][:2500]}\n\nNEW ({new['act']} s.{new['section']}):\n{new['text'][:2500]}", 700)
+
+
+@router.get("/transition", dependencies=LIMITED)
 def transition(act: str = "IPC", section: str = "302"):
     short = {"IPC": IPC, "BNS": BNS, "CRPC": CRPC, "BNSS": BNSS, "IEA": IEA, "BSA": BSA}
     a = short.get(act.upper().replace(" ", ""), act); s = section.strip().upper()
@@ -119,8 +131,10 @@ def transition(act: str = "IPC", section: str = "302"):
         raise HTTPException(404, "no mapping known for that section")
     diff = None
     if old and news:
-        diff = llm_json("You compare an old Indian statutory provision with its 2023 replacement. Output JSON: {\"summary\": str (2 sentences), \"changes\": [str, ...] (max 5 concrete differences: punishment, scope, new ingredients, renumbering), \"unchanged\": [str,...] (max 3), \"severity_old\": str, \"severity_new\": str}",
-                        f"OLD ({old['act']} s.{old['section']}):\n{old['text'][:2500]}\n\nNEW ({news[0]['act']} s.{news[0]['section']}):\n{news[0]['text'][:2500]}", 700)
+        try:                                 # the provisions and mapping need no model; return them even when it is unavailable
+            diff = _transition_diff(old["act"], old["section"], news[0]["act"], news[0]["section"])
+        except HTTPException:
+            diff = None
     return {"old": old, "new": news, "concepts": concepts, "diff": diff}
 
 
@@ -129,7 +143,7 @@ class DocIn(BaseModel):
     text: str = Field(..., min_length=40, max_length=80000)
 
 
-@router.post("/summarize")
+@router.post("/summarize", dependencies=LIMITED)
 def summarize(q: DocIn):
     ctx, plist = ctx_passages(q.text[:1500], 6)
     out = llm_json("You are a Supreme Court law clerk. Summarise the judgment/document into JSON with keys: title (str), court (str|null), year (int|null), parties (str), "
@@ -140,7 +154,7 @@ def summarize(q: DocIn):
     return {"summary": out, "passages": plist, "words": len(q.text.split())}
 
 
-@router.post("/timeline")
+@router.post("/timeline", dependencies=LIMITED)
 def timeline(q: DocIn):
     out = llm_json("Extract a chronological timeline of events from the legal facts. JSON: {\"events\": [{\"date\": 'YYYY-MM-DD' or 'YYYY-MM' or 'YYYY' or null, \"label\": short title, \"detail\": 1-2 sentences, "
                    "\"actors\": [names], \"kind\": one of incident|police|court|filing|order|contract|notice|other, \"legal_significance\": str}], \"gaps\": [str] (missing dates or facts a lawyer would ask for), \"limitation_flags\": [str]}. Order events chronologically; keep 4-20 events.",
@@ -150,18 +164,27 @@ def timeline(q: DocIn):
 
 class ArgueIn(BaseModel):
     facts: str = Field(..., min_length=20, max_length=20000)
-    side: str = "both"  # prosecution|defence|petitioner|respondent|both
-    forum: str = "Sessions Court"
+    side: str = Field("both", max_length=20)  # prosecution|defence|petitioner|respondent|both
+    forum: str = Field("Sessions Court", max_length=120)
 
 
-@router.post("/argue")
+_STRS = {"type": "array", "items": {"type": "string"}}
+_SIDE = {"type": "object", "required": ["name", "arguments"], "properties": {"name": {"type": "string"}, "arguments": {"type": "array", "items": {
+    "type": "object", "required": ["point", "basis", "citations", "strength"],
+    "properties": {"point": {"type": "string"}, "basis": {"type": "string"}, "citations": {"type": "array", "items": {"type": "integer"}}, "strength": {"type": "integer"}}}}}}
+ARGUE_SCHEMA = {"type": "object", "required": ["issues", "side_a", "side_b", "pivotal_facts", "likely_outcome", "confidence", "questions_bench_may_ask"],
+                "properties": {"issues": _STRS, "side_a": _SIDE, "side_b": _SIDE, "pivotal_facts": _STRS, "likely_outcome": {"type": "string"},
+                               "confidence": {"type": "number"}, "questions_bench_may_ask": _STRS}}
+
+
+@router.post("/argue", dependencies=LIMITED)
 def argue(q: ArgueIn):
     ctx, plist = ctx_passages(q.facts, 8)
     out = llm_json("You are a moot-court coach for Indian law. From the facts and the numbered passages, build the strongest arguments. JSON: "
                    "{\"issues\": [str], \"side_a\": {\"name\": str, \"arguments\": [{\"point\": str, \"basis\": str, \"citations\": [int], \"strength\": 1-5}]}, "
                    "\"side_b\": {same}, \"pivotal_facts\": [str], \"likely_outcome\": str, \"confidence\": 0-1, \"questions_bench_may_ask\": [str]}. "
                    "Cite passages by number only when they genuinely support the point. 3-5 arguments per side.",
-                   f"FORUM: {q.forum}\nSIDE REQUESTED: {q.side}\nFACTS:\n{q.facts[:8000]}\n\nPASSAGES:\n{ctx}", 1800)
+                   f"FORUM: {q.forum}\nSIDE REQUESTED: {q.side}\nFACTS:\n{q.facts[:8000]}\n\nPASSAGES:\n{ctx}", 1800, schema=ARGUE_SCHEMA)
     return {**out, "passages": plist}
 
 
@@ -181,8 +204,11 @@ def parse_punishment(text: str):
     return {"mentions": list(dict.fromkeys(found))[:6], "max_years": max(years) if years else None, "life": "imprisonment for life" in t, "death": "death" in t and "punished with death" in t, "fine": "fine" in t, "severity": sev}
 
 
-@router.get("/offence")
-def offence(q: str, limit: int = 8):
+_CLS: dict[tuple, list] = {}       # offence classification by result doc_ids; a function of the provisions only
+
+
+@router.get("/offence", dependencies=LIMITED)
+def offence(q: str = Query(..., min_length=1, max_length=300), limit: int = Query(8, ge=1, le=20)):
     ql = q.lower().strip(); hits = []
     for concept, provs in CONCEPTS.items():
         if ql in concept or concept in ql:
@@ -203,10 +229,15 @@ def offence(q: str, limit: int = 8):
         if h["doc_id"] not in seen:
             seen.add(h["doc_id"]); out.append(h)
     out = out[:limit]
-    cls = None
-    if out:
-        cls = llm_json("For each Indian offence provision, classify per the CrPC/BNSS First Schedule from general legal knowledge. JSON list of {\"doc_id\": str, \"cognizable\": bool|null, \"bailable\": bool|null, \"compoundable\": bool|null, \"triable_by\": str, \"ingredients\": [str] (3-5 essential ingredients)}. Mark null when unsure.",
-                       "\n\n".join(f"doc_id={h['doc_id']} :: {h['act']} s.{h['section']}: {h['text'][:700]}" for h in out), 1200, kind="array")
+    key = tuple(h["doc_id"] for h in out); cls = _CLS.get(key)
+    if cls is None and out:
+        try:
+            cls = llm_json("For each Indian offence provision, classify per the CrPC/BNSS First Schedule from general legal knowledge. JSON list of {\"doc_id\": str, \"cognizable\": bool|null, \"bailable\": bool|null, \"compoundable\": bool|null, \"triable_by\": str, \"ingredients\": [str] (3-5 essential ingredients)}. Mark null when unsure.",
+                           "\n\n".join(f"doc_id={h['doc_id']} :: {h['act']} s.{h['section']}: {h['text'][:700]}" for h in out), 1200, kind="array")
+            if len(_CLS) < 4096:
+                _CLS[key] = cls
+        except HTTPException:            # the provisions and parsed punishments are still worth returning
+            cls = None
     by = {c.get("doc_id"): c for c in (cls or []) if isinstance(c, dict)}
     for h in out:
         h["classification"] = by.get(h["doc_id"])
@@ -218,7 +249,7 @@ class CompareIn(BaseModel):
     doc_ids: list[str] = Field(..., min_length=2, max_length=3)
 
 
-@router.post("/compare")
+@router.post("/compare", dependencies=LIMITED)
 def compare(q: CompareIn):
     e = eng(); docs = []
     for d in q.doc_ids:
@@ -233,11 +264,11 @@ def compare(q: CompareIn):
 
 class SimplifyIn(BaseModel):
     text: str = Field(..., min_length=20, max_length=12000)
-    level: str = "12-year-old"  # 12-year-old | layperson | law student | practitioner
-    language: str = "English"
+    level: str = Field("12-year-old", max_length=40)  # 12-year-old | layperson | law student | practitioner
+    language: str = Field("English", max_length=40)
 
 
-@router.post("/simplify")
+@router.post("/simplify", dependencies=LIMITED)
 def simplify(q: SimplifyIn):
     out = llm_json(f"Rewrite the Indian legal text for a {q.level}, in {q.language}. JSON: {{\"plain\": str (<=120 words), \"example\": str (one concrete everyday scenario), \"key_terms\": [{{\"term\": str, \"meaning\": str}}] (max 5), \"do_dont\": [str] (max 4 practical pointers)}}",
                    q.text, 800)
@@ -401,7 +432,7 @@ def limitation(start: str | None = None):
         if start and r["days"]:
             try:
                 d0 = date.fromisoformat(start); dl = d0 + timedelta(days=r["days"]); row["deadline"] = dl.isoformat(); row["days_left"] = (dl - date.today()).days
-            except ValueError:
+            except (ValueError, OverflowError):
                 raise HTTPException(400, "start must be YYYY-MM-DD")
         rows.append(row)
     return {"today": date.today().isoformat(), "rows": rows}
@@ -432,7 +463,7 @@ def aibe():
 
 
 @router.get("/quiz")
-def quiz(n: int = 5, seed: int | None = None):
+def quiz(n: int = Query(5, ge=1, le=50), seed: int | None = None):
     rows = aibe(); rng = random.Random(seed)
     pick = rng.sample(rows, min(n, len(rows)))
     return {"total": len(rows), "questions": [{k: v for k, v in q.items() if k != "answer"} for q in pick]}
@@ -444,11 +475,13 @@ class QuizCheck(BaseModel):
     explain: bool = True
 
 
-@router.post("/quiz/check")
+@router.post("/quiz/check", dependencies=LIMITED)
 def quiz_check(q: QuizCheck):
     row = next((r for r in aibe() if r["id"] == q.id), None)
     if not row:
         raise HTTPException(404, "unknown question")
+    if not 0 <= q.choice < len(row["options"]):
+        raise HTTPException(422, "choice out of range")
     out = {"correct": q.choice == row["answer"], "answer": row["answer"]}
     if q.explain:
         ctx, plist = ctx_passages(row["question"] + " " + row["options"][row["answer"]], 4)
@@ -463,7 +496,7 @@ class VerifyIn(BaseModel):
     text: str = Field(..., min_length=3, max_length=20000)
 
 
-CITE = re.compile(r"(?:section|sec\.?|s\.|article|art\.?)\s*(\d+[A-Z]?)(?:\s*(?:of|,)?\s*(?:the\s+)?([A-Z][A-Za-z ,()]+?(?:Act|Code|Sanhita|Adhiniyam|Constitution)(?:,?\s*\d{4})?|IPC|BNS|BNSS|CrPC|BSA|NI Act|IT Act))?", re.I)
+CITE = re.compile(r"(?:section|sec\.?|s\.|article|art\.?)\s*(\d+[A-Z]?)(?:\s*(?:(?:of|,)\s*)?(?:the\s+)?([A-Z][A-Za-z ,()]+?(?:Act|Code|Sanhita|Adhiniyam|Constitution)(?:,?\s*\d{4})?|IPC|BNS|BNSS|CrPC|BSA|NI Act|IT Act))?", re.I)
 ABBR = {"ipc": IPC, "bns": BNS, "bnss": BNSS, "crpc": CRPC, "bsa": BSA, "iea": IEA, "ni act": NIA, "it act": ITA, "constitution": COI}
 
 

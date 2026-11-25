@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ForceGraph3D from "react-force-graph-3d";
 import * as THREE from "three";
 import { api } from "@/lib/api";
+import { esc } from "@/lib/export";
 import { useFetch } from "@/lib/hooks";
 import { Button, Caption, Card, ErrorBox, Field, Input, Page, Section, Select, Skeleton, Stat, StatStrip } from "@/components/ui";
 import { C } from "@/lib/plotly";
@@ -16,23 +17,26 @@ const KIND: Record<string, [string, string]> = { act: ["Act", C.warning], sectio
 const kindColor = (k: string) => KIND[k]?.[1] ?? C.muted;
 const kindLabel = (k: string) => KIND[k]?.[0] ?? k;
 const Dot = ({ kind }: { kind: string }) => <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: kindColor(kind) }} aria-hidden />;
-const tooltip = (n: Node) => `<div style="font:13px 'IBM Plex Sans',system-ui,sans-serif;color:${C.fg};background:${C.surface};border:1px solid ${C.grid};padding:6px 9px;border-radius:6px;max-width:280px">${n.label}<br/><span style="color:${C.sub};font-size:12px">${kindLabel(n.kind)} · ${n.degree} links</span></div>`;
+// The force-graph tooltip renders this string as HTML, and labels are judgment and section titles from the corpus.
+const tooltip = (n: Node) => `<div style="font:13px 'IBM Plex Sans',system-ui,sans-serif;color:${C.fg};background:${C.surface};border:1px solid ${C.grid};padding:6px 9px;border-radius:6px;max-width:280px">${esc(n.label)}<br/><span style="color:${C.sub};font-size:12px">${esc(kindLabel(n.kind))} · ${n.degree} links</span></div>`;
 
 export default function GraphPage() {
   const nav = useNavigate();
   const [query, setQuery] = useState("anticipatory bail"); const [hits, setHits] = useState<Node[]>([]); const [start, setStart] = useState("concept:anticipatory-bail");
-  const [hops, setHops] = useState(2); const [maxNodes, setMaxNodes] = useState(80); const [adj, setAdj] = useState(false); const [sel, setSel] = useState<Node | null>(null);
-  const g = useFetch(() => api.get<Graph>(`/kg/neighborhood?node=${encodeURIComponent(start)}&hops=${hops}&max_nodes=${maxNodes}`), [start, hops, maxNodes]);
+  const [hops, setHops] = useState(2); const [maxNodes, setMaxNodes] = useState(80); const [maxQ, setMaxQ] = useState(80); const [adj, setAdj] = useState(false); const [sel, setSel] = useState<Node | null>(null);
+  const g = useFetch(() => api.get<Graph>(`/kg/neighborhood?node=${encodeURIComponent(start)}&hops=${hops}&max_nodes=${maxQ}`), [start, hops, maxQ]);
   const concepts = useFetch(() => api.get<Concept[]>("/kg/concepts")); const stats = useFetch(() => api.get<{ kg: { nodes: Record<string, number>; edges: Record<string, number> } }>("/stats"));
   const [cf, setCf] = useState(""); const fg = useRef<any>(null); const box = useRef<HTMLDivElement>(null); const [w, setW] = useState(800);
   useEffect(() => { const ro = new ResizeObserver(() => setW(box.current?.clientWidth ?? 800)); if (box.current) ro.observe(box.current); return () => ro.disconnect(); }, []);
-  useEffect(() => { const h = setTimeout(async () => { if (query.trim().length > 1) setHits(await api.get<Node[]>(`/kg/search?q=${encodeURIComponent(query)}&limit=12`)); }, 250); return () => clearTimeout(h); }, [query]);
+  // Dragging the slider would otherwise fetch a neighbourhood for every value it passes.
+  useEffect(() => { const h = setTimeout(() => setMaxQ(maxNodes), 300); return () => clearTimeout(h); }, [maxNodes]);
+  useEffect(() => { let live = true; const h = setTimeout(() => { if (query.trim().length > 1) api.get<Node[]>(`/kg/search?q=${encodeURIComponent(query)}&limit=12`).then(r => { if (live) setHits(r); }, () => { if (live) setHits([]); }); }, 250); return () => { live = false; clearTimeout(h); }; }, [query]);
   const data = useMemo(() => ({ nodes: (g.data?.nodes ?? []).map(n => ({ ...n })), links: (g.data?.edges ?? []).map(e => ({ ...e })) }), [g.data]);
   const adjacency = useMemo(() => { const m = new Map<string, string[]>(); const lab = new Map(data.nodes.map(n => [n.id, n.label])); for (const e of data.links) { m.set(e.source, [...(m.get(e.source) ?? []), `${e.rel} → ${lab.get(e.target)}`]); } return [...m.entries()].map(([k, v]) => ({ from: lab.get(k) ?? k, to: v })); }, [data]);
   const kg = stats.data?.kg;
   return (
     <Page title="Knowledge Graph" desc="Acts, provisions, judgments, topics and curated legal concepts, linked by cross-references and citations. Search for a node, then explore what it connects to.">
-      {kg ? <StatStrip>{Object.entries(kg.nodes).map(([k, v]) => <Stat key={k} label={<span className="inline-flex items-center gap-1.5"><Dot kind={k} />{kindLabel(k)}s</span>} value={v.toLocaleString()} />)}<Stat label="Links" value={Object.values(kg.edges).reduce((a, b) => a + b, 0).toLocaleString()} /></StatStrip> : <Skeleton className="h-[88px]" />}
+      {stats.error ? <ErrorBox error={stats.error} /> : kg ? <StatStrip>{Object.entries(kg.nodes).map(([k, v]) => <Stat key={k} label={<span className="inline-flex items-center gap-1.5"><Dot kind={k} />{kindLabel(k)}s</span>} value={v.toLocaleString()} />)}<Stat label="Links" value={Object.values(kg.edges).reduce((a, b) => a + b, 0).toLocaleString()} /></StatStrip> : <Skeleton className="h-[88px]" />}
 
       <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Card className="space-y-4" as="aside">

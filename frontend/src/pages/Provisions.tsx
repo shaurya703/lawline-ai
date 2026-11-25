@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeftRight, Columns3, MessageSquareText, Network, Wand2 } from "lucide-react";
 import { api, type Simplified } from "@/lib/api";
 import { useFetch } from "@/lib/hooks";
+import { toast } from "@/lib/store";
 import { Button, Callout, Caption, Card, CopyButton, ErrorBox, Field, Input, Page, PinButton, Section, Select, Skeleton, Tabs, Tag } from "@/components/ui";
 import { Chart, C } from "@/lib/plotly";
 import CorpusScatter from "@/components/CorpusScatter";
@@ -23,7 +24,7 @@ export default function Provisions() {
   const [params, setParams] = useSearchParams(); const nav = useNavigate();
   const acts = useFetch(() => api.get<Act[]>("/acts"));
   const [act, setAct] = useState(params.get("act") ?? FAV[0]); const [q, setQ] = useState(""); const [doc, setDoc] = useState<string | null>(params.get("doc"));
-  const [simple, setSimple] = useState<Simplified | null>(null); const [simpleBusy, setSimpleBusy] = useState(false); const [view, setView] = useState<"largest" | "years">("largest");
+  const [simple, setSimple] = useState<(Simplified & { doc: string }) | null>(null); const [simpleBusy, setSimpleBusy] = useState(false); const [view, setView] = useState<"largest" | "years">("largest");
   const wantSec = params.get("sec");
   // Tagged with the Act it was fetched for: useFetch keeps the previous list while the next one loads.
   const secsFor = useFetch(() => api.get<Sec[]>(`/acts/sections?act=${encodeURIComponent(act)}&q=${encodeURIComponent(q)}`).then(rows => ({ act, rows })), [act, q]);
@@ -32,11 +33,11 @@ export default function Provisions() {
   useEffect(() => { if (prov.data?.act && prov.data.act !== act) setAct(prov.data.act); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prov.data]);
   useEffect(() => { if (!doc && secs.data?.length) { const hit = wantSec ? secs.data.find(x => x.section.toUpperCase() === wantSec.toUpperCase()) : null; setDoc((hit ?? secs.data[0]).doc_id); } }, [secs.data, doc, wantSec]);
-  useEffect(() => { setSimple(null); }, [doc]);
-  const simplify = async () => { if (!prov.data) return; setSimpleBusy(true); try { setSimple(await api.post<Simplified>("/simplify", { text: prov.data.text.slice(0, 6000), level: "layperson" })); } finally { setSimpleBusy(false); } };
+  // Tagged with its provision, so a reply that lands after the reader has moved on is not shown under the next one.
+  const simplify = async () => { if (!prov.data) return; const at = prov.data.doc_id; setSimpleBusy(true); try { setSimple({ ...await api.post<Simplified>("/simplify", { text: prov.data.text.slice(0, 6000), level: "layperson" }), doc: at }); } catch (e) { toast(String(e), "err"); } finally { setSimpleBusy(false); } };
   const pickAct = (a: string) => { setAct(a); setDoc(null); setParams({}); };
   const isConst = act.startsWith("Constitution"); const unit = isConst ? "Art." : "s."; const word = isConst ? "Article" : "Section";
-  const top = (acts.data ?? []).slice(0, 30); const p = prov.data;
+  const top = (acts.data ?? []).slice(0, 30); const p = prov.data; const plain = simple && simple.doc === p?.doc_id ? simple : null;
   return (
     <Page title="Provision Explorer" desc="Browse more than a thousand central Acts section by section. Read the text, get it in plain words, and see which judgments cite it.">
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -54,20 +55,20 @@ export default function Provisions() {
         </Card>
 
         <div className="min-w-0 space-y-5">
-          {prov.error ? <ErrorBox error={prov.error} /> : prov.loading || !p ? <Skeleton className="h-80" /> : (<>
+          {prov.error ? <ErrorBox error={prov.error} /> : !p && secs.error ? <ErrorBox error={secs.error} /> : prov.loading || !p ? <Skeleton className="h-80" /> : (<>
             <Card as="article">
               <Caption>{p.act}</Caption>
               <h2 className="mt-1 font-serif text-[24px] font-medium leading-tight text-ink">{word} {p.section}{heading(p.title) && <span className="text-ink-2">. {heading(p.title)}</span>}</h2>
               <p className="statute mt-4">{body(p.text)}</p>
               {p.concepts.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{p.concepts.map(c => <Tag key={c}>{c}</Tag>)}</div>}
-              {simple && <Callout tone="info" title="In plain words" className="mt-5"><p>{simple.plain}</p><p className="mt-2 text-ink-2"><span className="font-medium text-ink">Example.</span> {simple.example}</p>{simple.do_dont?.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-2">{simple.do_dont.map((d, i) => <li key={i}>{d}</li>)}</ul>}</Callout>}
+              {plain && <Callout tone="info" title="In plain words" className="mt-5"><p>{plain.plain}</p><p className="mt-2 text-ink-2"><span className="font-medium text-ink">Example.</span> {plain.example}</p>{plain.do_dont?.length > 0 && <ul className="mt-2 list-disc space-y-1 pl-5 text-ink-2">{plain.do_dont.map((d, i) => <li key={i}>{d}</li>)}</ul>}</Callout>}
               <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-line pt-4">
                 <Button variant="primary" onClick={() => nav(`/app/counsel?q=${encodeURIComponent(`Explain ${word} ${p.section} of the ${p.act} in plain English.`)}`)}><MessageSquareText className="h-4 w-4" aria-hidden />Ask Counsel</Button>
-                <Button onClick={simplify} disabled={simpleBusy || !!simple}><Wand2 className="h-4 w-4" aria-hidden />{simpleBusy ? "Simplifying…" : "Simplify"}</Button>
-                {CODE[p.act] && <Button onClick={() => nav(`/app/transition?act=${CODE[p.act]}&section=${p.section}`)}><ArrowLeftRight className="h-4 w-4" aria-hidden />2023 bridge</Button>}
+                <Button onClick={simplify} disabled={simpleBusy || !!plain}><Wand2 className="h-4 w-4" aria-hidden />{simpleBusy ? "Simplifying…" : "Simplify"}</Button>
+                {CODE[p.act] && <Button onClick={() => nav(`/app/transition?act=${CODE[p.act]}&section=${encodeURIComponent(p.section)}`)}><ArrowLeftRight className="h-4 w-4" aria-hidden />2023 bridge</Button>}
                 <Button onClick={() => nav(`/app/compare?ids=${encodeURIComponent(p.doc_id)}`)}><Columns3 className="h-4 w-4" aria-hidden />Compare</Button>
                 <Button variant="ghost" onClick={() => nav("/app/graph")}><Network className="h-4 w-4" aria-hidden />Graph</Button>
-                <span className="ml-auto flex items-center"><CopyButton text={p.text} /><PinButton kind="provision" title={p.citation} body={p.text} meta={{ to: `/app/provisions?doc=${p.doc_id}` }} /></span>
+                <span className="ml-auto flex items-center"><CopyButton text={p.text} /><PinButton kind="provision" title={p.citation} body={p.text} meta={{ to: `/app/provisions?doc=${encodeURIComponent(p.doc_id)}` }} /></span>
               </div>
               <p className="num mt-3 text-[13px] text-ink-3">{plural(p.cites.length, "citing judgment", "citing judgments")} · {plural(p.refers_to.length, "cross-reference", "cross-references")} · {plural(p.concepts.length, "concept", "concepts")}</p>
             </Card>
@@ -79,7 +80,7 @@ export default function Provisions() {
 
       <Section title="Corpus overview" desc={view === "largest" ? "The thirty largest Acts by number of provisions." : "Every Act by year of enactment and size. Drag to rotate; click a point to open that Act."}>
         <Tabs value={view} onChange={setView} items={[{ id: "largest", label: "Largest Acts" }, { id: "years", label: "Acts by year" }]} className="mb-3" />
-        {!acts.data ? <Skeleton className="h-64" /> : view === "largest"
+        {acts.error ? <ErrorBox error={acts.error} /> : !acts.data ? <Skeleton className="h-64" /> : view === "largest"
           ? <Chart height={640} data={[{ type: "bar", orientation: "h", x: top.map(a => a.sections), y: top.map(a => a.act), marker: { color: C.primary }, hovertemplate: "%{y}<br>%{x} provisions<extra></extra>" }]} layout={{ xaxis: { showgrid: true, title: { text: "provisions" } }, yaxis: { autorange: "reversed", showgrid: false, tickfont: { size: 11 } }, margin: { l: 300, r: 16, t: 8, b: 40 } }} />
           : <CorpusScatter acts={acts.data} onPick={a => { pickAct(a); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
       </Section>

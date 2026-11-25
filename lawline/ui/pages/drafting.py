@@ -1,5 +1,5 @@
 import streamlit as st
-from ..theme import hero, badges
+from ..theme import hero, badges, esc
 from ..state import engine, llm_text
 from ...config import RetrievalConfig
 
@@ -30,6 +30,6 @@ def render():
         draft = llm_text(f"You are an Indian legal drafter. Draft a {kind} in {lang}, tone: {tone}. Use ONLY the statutory passages provided for legal references and cite them in brackets [n]. "
                          "Use placeholders like [DATE] where facts are missing. Structure with headings; end with a disclaimer that this is a template requiring review by a licensed advocate.",
                          f"FIELDS:\n" + "\n".join(f"- {k}: {v}" for k, v in fields.items()) + f"\n\nSTATUTORY PASSAGES:\n{ctx}", 1600)
-        st.markdown(draft); st.download_button("⬇️ Download draft", draft.encode(), f"{kind.split(' (')[0].replace(' ', '_').lower()}.md")
+        st.markdown(draft); st.download_button("⬇️ Download draft", draft.encode(), f"{kind.split(' (')[0].replace(' ', '_').lower()}.md", on_click="ignore")
         with st.expander("Passages"):
-            for p in rr.passages: st.markdown(f'<div class="ll-src"><b>[{p.rank}] {p.chunk.citation}</b> {badges(p.sources)}<div>{p.chunk.text[:500]}…</div></div>', unsafe_allow_html=True)
+            for p in rr.passages: st.markdown(f'<div class="ll-src"><b>[{p.rank}] {esc(p.chunk.citation)}</b> {badges(p.sources)}<div>{esc(p.chunk.text[:500])}…</div></div>', unsafe_allow_html=True)

@@ -37,7 +37,7 @@ export default function SettingsPage() {
         <Section title="Connection">
           <div className="space-y-4">
             <Field label="API address" hint="Leave empty to use the default. Point it at a local backend (http://localhost:8000) or a tunnel."><Input placeholder={(import.meta.env.VITE_API_BASE as string) || "/api"} value={s.apiBase} onChange={e => settings.set({ apiBase: e.target.value.trim() })} /></Field>
-            <div className="flex gap-2"><Button size="sm" onClick={async () => { await resolveBase(true); const r = await api.health(); toast(r.ok ? `API reachable at ${r.base} · ${Math.round(r.ms)} ms` : "API unreachable on every candidate address", r.ok ? "ok" : "err"); }}>Test connection</Button><Button size="sm" variant="ghost" onClick={() => settings.set({ apiBase: "" })}>Reset</Button></div>
+            <div className="flex gap-2"><Button size="sm" onClick={async () => { await resolveBase(true); const r = await api.health(); const want = s.apiBase.trim().replace(/\/+$/, ""); const fellBack = r.ok && !!want && r.base !== want; toast(!r.ok ? "API unreachable on every candidate address" : fellBack ? `${want} did not answer. Using ${r.base}` : `API reachable at ${r.base} · ${Math.round(r.ms)} ms`, !r.ok ? "err" : fellBack ? "warn" : "ok"); }}>Test connection</Button><Button size="sm" variant="ghost" onClick={() => settings.set({ apiBase: "" })}>Reset</Button></div>
           </div>
         </Section>
       </div>

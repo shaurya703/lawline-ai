@@ -21,6 +21,19 @@ def tokenize(text: str) -> list[str]:
     return [t for t in toks if t not in STOP and len(t) > 1]
 
 
+class _BM25Unpickler(pickle.Unpickler):
+    """bm25.pkl is downloaded from the assets repo, and pickle.load would call whatever a tampered file names. The
+    current format is plain containers and needs no lookup; the two older ones need the rank_bm25 object and NumPy's
+    array constructors (under the NumPy 1 and NumPy 2 module names). Nothing else is admitted."""
+    ALLOWED = {("rank_bm25", "BM25Okapi"), ("numpy", "ndarray"), ("numpy", "dtype"),
+               ("numpy._core.multiarray", "_reconstruct"), ("numpy.core.multiarray", "_reconstruct")}
+
+    def find_class(self, module, name):
+        if (module, name) not in self.ALLOWED:
+            raise pickle.UnpicklingError(f"bm25.pkl references {module}.{name}, which a BM25 index never contains")
+        return super().find_class(module, name)
+
+
 class BM25Index:
     """Okapi BM25 over an inverted index.
 
@@ -94,7 +107,7 @@ class BM25Index:
     @classmethod
     def load(cls, path: Path) -> "BM25Index":
         with open(Path(path) / "bm25.pkl", "rb") as f:
-            d = pickle.load(f)
+            d = _BM25Unpickler(f).load()
         if "bm25" in d:                                                              # format 1: a pickled rank_bm25 object
             return cls._from_okapi(d["ids"], d["bm25"])
         if d.get("format") == 3:

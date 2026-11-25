@@ -1,4 +1,4 @@
-"""Deploy the app to a Hugging Face Space (Streamlit SDK). Needs HF_TOKEN (write) and GEMINI_API_KEY in the environment.
+"""Deploy the app to a Hugging Face Space (Docker SDK running Streamlit). Needs HF_TOKEN (write) and GEMINI_API_KEY in the environment.
 Usage: HF_TOKEN=hf_xxx python scripts/deploy_space.py --space <user>/lawline-ai"""
 import argparse, os, tempfile, shutil
 from pathlib import Path

@@ -1,21 +1,20 @@
 import "./styles/globals.css";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Shell from "@/components/shell/Shell";
 import Landing from "@/pages/Landing";
 import { applySettings, settings } from "@/lib/store";
-import { Skeleton } from "@/components/ui";
+import { PageBoundary } from "@/components/ui";
 const L = (f: () => Promise<{ default: React.ComponentType }>) => lazy(f);
 const Overview = L(() => import("@/pages/Overview")), Counsel = L(() => import("@/pages/Counsel"));
 const Lab = L(() => import("@/pages/Lab")), GraphPage = L(() => import("@/pages/Graph")), Provisions = L(() => import("@/pages/Provisions")), Analyzer = L(() => import("@/pages/Analyzer")), Drafting = L(() => import("@/pages/Drafting")), AnalyticsPage = L(() => import("@/pages/Analytics")), Methodology = L(() => import("@/pages/Methodology"));
 const Rights = L(() => import("@/pages/Rights")), Offence = L(() => import("@/pages/Offence")), Glossary = L(() => import("@/pages/Glossary")), Transition = L(() => import("@/pages/Transition")), Summarizer = L(() => import("@/pages/Summarizer")), Timeline = L(() => import("@/pages/Timeline")), Arena = L(() => import("@/pages/Arena")), Verify = L(() => import("@/pages/Verify")), Compare = L(() => import("@/pages/Compare")), Limitation = L(() => import("@/pages/Limitation")), Trainer = L(() => import("@/pages/Trainer")), CaseFiles = L(() => import("@/pages/CaseFiles")), SettingsPage = L(() => import("@/pages/Settings"));
-const Fallback = () => <div className="mx-auto grid max-w-[1184px] gap-4 p-8"><Skeleton className="h-16" /><Skeleton className="h-64" /></div>;
 
 export default function App() {
   useEffect(() => { applySettings(settings.get()); }, []);
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-      <Suspense fallback={<Fallback />}>
+      <PageBoundary>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/app" element={<Shell />}>
@@ -44,7 +43,7 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Suspense>
+      </PageBoundary>
     </BrowserRouter>
   );
 }

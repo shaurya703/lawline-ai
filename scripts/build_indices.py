@@ -1,8 +1,7 @@
 """Offline indexing pipeline: corpus -> chunks -> embeddings/FAISS, BM25, knowledge graph."""
 from __future__ import annotations
 import argparse, json, time
-from pathlib import Path
-from lawline.config import CORPUS_PATH, CHUNKS_PATH, INDEX_DIR, BASE_EMBEDDING_MODEL, CHUNK_WORDS, CHUNK_OVERLAP
+from lawline.config import CORPUS_PATH, INDEX_DIR, BASE_EMBEDDING_MODEL, CHUNK_WORDS, CHUNK_OVERLAP
 from lawline.data.chunking import build_chunks, load_chunks
 from lawline.index.embedder import Embedder
 from lawline.index.faiss_index import FaissIndex

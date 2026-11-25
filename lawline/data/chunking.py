@@ -29,13 +29,9 @@ def split_words(words: list[str], size: int, overlap: int) -> list[list[str]]:
 
 
 def chunk_document(doc: Document, size: int = CHUNK_WORDS, overlap: int = CHUNK_OVERLAP) -> list[Chunk]:
-    header = ""
-    if doc.doc_type == "statute":
-        header = f"{doc.act} — Section {doc.section}. "
-    else:
-        header = f"{doc.title}. "
+    header = f"{doc.act} — Section {doc.section}. " if doc.doc_type == "statute" else f"{doc.title}. "
     words = _words(doc.text)
-    if not words or words == [""]:
+    if words == [""]:
         return []
     pieces = split_words(words, size, overlap)
     chunks = []
@@ -57,8 +53,21 @@ def build_chunks(corpus_path=CORPUS_PATH, out_path=CHUNKS_PATH, size=CHUNK_WORDS
     return write_jsonl(out_path, gen())
 
 
+_SHARED = ("doc_id", "doc_type", "title", "act", "section", "court", "source")
+
+
 def load_chunks(path=CHUNKS_PATH) -> list[Chunk]:
-    return [Chunk.from_dict(d) for d in read_jsonl(path)]
+    """The chunks of a document repeat its doc_id and title, and the corpus repeats a handful of acts, courts and
+    sources. json.loads allocates every occurrence, so keep one string per distinct value."""
+    pool: dict[str, str] = {}
+    out = []
+    for d in read_jsonl(path):
+        for k in _SHARED:
+            v = d.get(k)
+            if isinstance(v, str):
+                d[k] = pool.setdefault(v, v)
+        out.append(Chunk.from_dict(d))
+    return out
 
 
 if __name__ == "__main__":

@@ -18,10 +18,12 @@ lawline/
   retrieval/   fusion.py (RRF), reranker.py, hybrid.py
   generation/  llm.py (Gemini / Groq / extractive fallback), prompts.py
   engine.py    QueryEngine (retrieve → prompt → generate → citations)
-  api.py       FastAPI  ·  app.py  Streamlit UI
+  api.py, api_ext.py, api_features.py   FastAPI routes  ·  ratelimit.py   request budget for the LLM routes
+  ui/          Streamlit pages (entry point: app.py in the repo root)
+  bootstrap.py fetches the prebuilt indices and model from the assets dataset
   eval/        gold.py, metrics.py, run_ablation.py, landmark_eval.py, chunk_sweep.py, answer_eval.py, plots.py
   training/    train_biencoder.py
-scripts/       build_indices.py, run_api.sh, run_ui.sh
+scripts/       build_indices.py, run_api.sh, run_ui.sh, modal_app.py (API on Modal), deploy_space.py (UI on a Hugging Face Space)
 tests/         unit + API tests (no network / indices needed)
 ```
 
@@ -60,7 +62,8 @@ LAWLINE_FAISS_TAG=ft LAWLINE_EMBED_MODEL=outputs/models/lawline-bge-small-legal 
 Docker: `docker compose up --build` (serves API on :8000 and UI on :8501).
 The image copies prebuilt artefacts rather than building them, so run the index and
 training steps above first, or fetch them with `python -m lawline.bootstrap`: `data/processed/chunks.jsonl`,
-`outputs/indices/` and `outputs/models/` are gitignored, and without them the build fails at the first `COPY` of them.
+`outputs/indices/`, `outputs/models/` and the Bar Exam Trainer's questions under `data/raw/` are gitignored, and without
+them the build fails at the first `COPY` of them.
 
 ## Results (see `outputs/results/tables`, `outputs/figures` and the app's Analytics page)
 
@@ -89,7 +92,7 @@ can be found from a plain question; it does not measure how much case law is cov
 
 Fine-tuning lifts IPC fact-pattern→section retrieval from 0.00 to 0.315 R@5 and BNS-QA from 0.29 to 0.65 on unseen sections.
 Grounding raises AIBE accuracy from 64.7 % to 68.0 % (n = 150) and judged faithfulness to 2.0/2 with 75 % of answers citing the gold provision (measured on v1, not re-run on v2).
-Retrieval latency on a laptop (median): embed 5 ms · FAISS 4 ms · BM25 4 ms · KG 35 ms · reranker ≈ 0.15 s.
+Retrieval latency on a laptop (median): embed 5 ms · FAISS 4 ms · BM25 4 ms · KG 1 ms · reranker ≈ 0.15 s.
 
 <!-- results:end -->
 `docs/REPORT_PHASE3_CHAPTERS.md` and `paper/` describe the v1 corpus and its results.

@@ -272,6 +272,130 @@ check("phone width: no page scrolls sideways", async () => {
   return "23 routes";
 });
 
+// ---------------------------------------------------------------------------------------------- robustness (routed, no model calls)
+const isApi = u => /\/api\/|:8000\//.test(u.href);
+const fulfil = (body, ms = 0) => async r => { if (ms) await new Promise(f => setTimeout(f, ms)); await r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) }); };
+check("glossary: typing a search adds no history entry per keystroke", async () => {
+  await go("/app/glossary"); const before = await page.evaluate(() => history.length);
+  await page.getByLabel("Search the glossary").click(); await page.keyboard.type("bail"); await page.waitForTimeout(300);
+  const after = await page.evaluate(() => history.length);
+  expect(after === before, `history grew from ${before} to ${after}`);
+});
+check("rights guides: a guide reached through Back starts at step 1", async () => {
+  await go("/app/rights"); await page.locator("main button").first().waitFor();
+  let p = api("rights?scenario="); await page.locator("main button").first().click(); await p; await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "All guides" }).click(); await page.locator("main button").nth(1).waitFor();
+  p = api("rights?scenario="); await page.locator("main button").nth(1).click(); await p; await page.waitForTimeout(300);
+  await page.getByRole("button", { name: /Next/i }).click(); await page.getByRole("button", { name: /Next/i }).click();
+  expect(/Step 3 of/.test(await main()), "Next did not advance the guide");
+  await page.goBack(); await page.goBack(); await page.waitForTimeout(600);      // to the first guide through history alone, with no click to reset the step
+  expect(/Step 1 of/.test(await main()), "a guide reached through history kept the other guide's step: " + ((await main()).match(/Step \d+ of \d+/) || ["no step shown"])[0]);
+});
+check("api down: pages say the request failed instead of loading forever", async () => {
+  await page.route(isApi, r => r.abort());
+  const silent = [];
+  try {
+    for (const r of ["/app", "/app/provisions", "/app/compare", "/app/graph"]) {
+      await page.goto(BASE + r);
+      if (!await page.locator("main [role=alert]").first().waitFor({ timeout: 8000 }).then(() => true, () => false)) silent.push(r);
+    }
+  } finally { await page.unroute(isApi); }
+  expect(!silent.length, "no error shown on " + silent.join(", "));
+  return "4 routes";
+});
+check("citation verifier: the marked text is the text that was checked", async () => {
+  await go("/app/verify");
+  await page.locator("main textarea").first().fill("The accused relies on Section 999 of the Indian Penal Code.");
+  const p = api("verify"); await page.getByRole("button", { name: /Verify citations/ }).click(); await p; await page.waitForTimeout(300);
+  await page.locator("main textarea").first().fill("Something else entirely.");
+  expect((await main()).includes("The accused relies on"), "the marked text followed later edits to the box");
+});
+check("bar exam trainer: a failed check can be retried", async () => {
+  await go("/app/trainer"); const q = api("quiz?n=");
+  await page.getByRole("button", { name: /New set|Start/i }).first().click(); await q; await page.waitForTimeout(400);
+  let calls = 0;
+  await page.route(u => isApi(u) && u.pathname.endsWith("/quiz/check"), r => ++calls === 1 ? r.abort() : fulfil({ correct: true, answer: 0, explanation: "Because the text says so.", passages: [] })(r));
+  try {
+    const opts = page.locator("main button:not([disabled])").filter({ hasNotText: /New set|Next|Finish/ });
+    await opts.first().click(); await page.locator("main [role=alert]").waitFor({ timeout: 8000 });
+    expect(await opts.count() >= 4, "options stayed locked after a failed check");
+    await opts.first().click(); await page.getByRole("button", { name: /Next question/ }).waitFor({ timeout: 8000 });
+  } finally { await page.unroute(u => isApi(u) && u.pathname.endsWith("/quiz/check")); }
+});
+check("model output with missing lists and loose dates renders, on Indian time", async () => {
+  const c2 = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: "Asia/Kolkata" }); const p2 = await c2.newPage();
+  const errs = []; p2.on("pageerror", e => errs.push(String(e).slice(0, 160)));
+  try {
+    await p2.route(u => isApi(u) && u.pathname.endsWith("/timeline"), fulfil({ events: [{ date: "2023-01-03", label: "Agreement signed", detail: "d", kind: "contract" }, { date: "early 2023", label: "Price raised", detail: "d", kind: "notice" }, { date: "2023-05", label: "Legal notice", detail: "d", kind: "notice" }] }));
+    await p2.goto(BASE + "/app/timeline"); await p2.getByRole("button", { name: /sample/i }).click(); await p2.locator("main .js-plotly-plot").waitFor({ timeout: 10000 });
+    const xs = await p2.evaluate(() => document.querySelector("main .js-plotly-plot").data[0].x);
+    expect(JSON.stringify(xs) === JSON.stringify(["2023-01-03", "2023-05-01"]), "timeline dates on the chart: " + JSON.stringify(xs));
+    await p2.route(u => isApi(u) && u.pathname.endsWith("/summarize"), fulfil({ summary: { title: "State v. Kumar", court: null, year: null, parties: "State v. Kumar", holding: "Conviction altered.", ratio: "No premeditation.", outcome: "partly allowed", one_liner: "Altered to 304 Part I." }, words: 9 }, 1500));
+    await p2.route(u => isApi(u) && u.pathname.endsWith("/analyze/upload"), fulfil({ text: "The appellant was convicted under Section 302 IPC; the High Court affirmed and the appeal is partly allowed." }));
+    await p2.goto(BASE + "/app/summarize");
+    await p2.locator("main input[type=file]").setInputFiles({ name: "judgment.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4") });
+    await p2.waitForTimeout(600);
+    expect(await p2.getByRole("button", { name: "Reading…" }).count() === 1, "the page stopped showing progress while the summary was still being written");
+    await p2.getByText("Conviction altered.").waitFor({ timeout: 10000 });
+  } finally { await c2.close(); }
+  expect(!errs.length, errs.join(" | "));
+});
+
+/** A one-page PDF holding one line of text, built by hand so the test needs no fixture file. */
+const pdf = text => {
+  const stream = `BT /F1 12 Tf 72 720 Td (${text.replace(/[()\\]/g, "\\$&")}) Tj ET`;
+  const objs = ["<</Type/Catalog/Pages 2 0 R>>", "<</Type/Pages/Kids[3 0 R]/Count 1>>",
+    "<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>",
+    `<</Length ${stream.length}>>\nstream\n${stream}\nendstream`, "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>"];
+  let out = "%PDF-1.4\n"; const at = [];
+  objs.forEach((o, i) => { at.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + at.map(a => String(a).padStart(10, "0") + " 00000 n \n").join("")
+    + `trailer\n<</Size ${objs.length + 1}/Root 1 0 R>>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, "latin1");
+};
+check("judgment summarizer: the server reads the text of an uploaded PDF", async () => {
+  const summarize = u => isApi(u) && u.pathname.endsWith("/summarize");
+  await page.route(summarize, fulfil({ summary: { title: "State v. Kumar", court: null, year: null, parties: "State v. Kumar", holding: "Conviction affirmed.", ratio: "The evidence was consistent.", outcome: "dismissed", one_liner: "Affirmed." }, words: 18 }));
+  try {
+    await go("/app/summarize");
+    const up = api("analyze/upload");
+    await page.locator("main input[type=file]").setInputFiles({ name: "judgment.pdf", mimeType: "application/pdf", buffer: pdf("The appellant was convicted under Section 302 of the Indian Penal Code and the High Court affirmed the conviction.") });
+    expect((await up).status() === 200, "upload was refused");
+    await page.getByText("Conviction affirmed.").waitFor({ timeout: 15000 });
+    expect((await page.locator("main textarea").first().inputValue()).includes("convicted under Section 302"), "the text extracted from the PDF did not reach the page");
+  } finally { await page.unroute(summarize); }
+});
+check("a page that fails to render is reported in place and the rest of the app keeps working", async () => {
+  const an = await json("/analytics");
+  const c2 = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); const p2 = await c2.newPage();   // its own page: the render error is expected here
+  try {
+    await p2.route(u => isApi(u) && u.pathname.endsWith("/analytics"), fulfil({ ...an, answer_eval: {} }));
+    await p2.goto(BASE + "/app/analytics?view=quality");
+    await p2.locator("main [role=alert]").filter({ hasText: "This page could not be displayed" }).waitFor({ timeout: 15000 });
+    const other = p2.locator("aside a", { hasText: "Methodology" });      // the Evaluation group is open on this route
+    expect(await other.count() === 1, "the navigation went away with the failed page");
+    await other.click(); await p2.waitForURL(/\/app\/methodology/); await p2.locator("main h1").waitFor({ timeout: 10000 });
+    expect(await p2.locator("main [role=alert]").count() === 0, "the error stayed on screen after moving to another page");
+  } finally { await c2.close(); }
+});
+
+check("dialogs: keys go to the topmost dialog, Tab stays inside, Escape closes one at a time", async () => {
+  const dialogs = () => page.locator('[role="dialog"]').count();
+  const inside = sel => page.evaluate(s => !!document.activeElement?.closest(s), sel);
+  await go("/app", 1000);
+  await page.getByRole("button", { name: /Case files/ }).click(); await page.waitForTimeout(400);
+  await page.keyboard.press("Tab"); expect(await inside('aside[role="dialog"]'), "Tab left the case-file drawer");
+  await page.keyboard.press("Control+k"); await page.waitForTimeout(400); await page.keyboard.type("gloss");
+  expect(await page.locator('[aria-label="Search and jump"] input').inputValue() === "gloss", "typing did not reach the palette opened over the drawer");
+  await page.keyboard.press("Tab"); expect(await inside('div[aria-label="Search and jump"]'), "Tab pulled focus out of the palette");
+  await page.keyboard.press("Escape"); await page.waitForTimeout(300);
+  expect(await dialogs() === 1 && await page.locator('aside[role="dialog"]').count() === 1, "Escape in the palette did not close the palette alone");
+  await page.keyboard.press("Tab"); await page.keyboard.press("Escape"); await page.waitForTimeout(300);
+  expect(await dialogs() === 0, "Escape did not close the drawer");
+  expect(await page.evaluate(() => /Case files/.test(document.activeElement?.getAttribute("aria-label") || "")), "focus did not return to the button that opened the drawer");
+});
+
 // ---------------------------------------------------------------------------------------------- run
 let failed = 0, skipped = 0;
 for (const c of checks) {

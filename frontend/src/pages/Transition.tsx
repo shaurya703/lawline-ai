@@ -15,7 +15,8 @@ const codeOf = (act: string) => act.startsWith("Indian Penal") ? "IPC" : act.sta
 export default function TransitionPage() {
   const [params, setParams] = useSearchParams(); const act = params.get("act") ?? "IPC"; const section = params.get("section") ?? "302";
   const [a, setA] = useState(act); const [s, setS] = useState(section); const [tab, setTab] = useState<"bridge" | "map">("bridge"); const [filter, setFilter] = useState("");
-  const t = useFetch(() => api.get<Transition>(`/transition?act=${act}&section=${encodeURIComponent(section)}`), [act, section]);
+  const [seen, setSeen] = useState(act + " " + section); if (seen !== act + " " + section) { setSeen(act + " " + section); setA(act); setS(section); }   // the form follows the URL on Back and Forward
+  const t = useFetch(() => api.get<Transition>(`/transition?act=${encodeURIComponent(act)}&section=${encodeURIComponent(section)}`), [act, section]);
   const map = useFetch(() => api.get<MapRow[]>("/transition/map"));
   const rows = useMemo(() => (map.data ?? []).filter(r => !filter || (r.old_section + " " + r.new_sections.join(" ") + " " + r.concepts.join(" ") + " " + r.old_act).toLowerCase().includes(filter.toLowerCase())), [map.data, filter]);
   const sankey = useMemo(() => { const rs = (map.data ?? []).filter(r => r.old_act.startsWith("Indian Penal")).slice(0, 60); const labels = [...rs.map(r => `IPC ${r.old_section}`), ...Array.from(new Set(rs.flatMap(r => r.new_sections.map(n => `BNS ${n}`))))]; const idx = (l: string) => labels.indexOf(l); return { labels, source: rs.flatMap(r => r.new_sections.map(() => idx(`IPC ${r.old_section}`))), target: rs.flatMap(r => r.new_sections.map(n => idx(`BNS ${n}`))) }; }, [map.data]);
@@ -40,7 +41,7 @@ export default function TransitionPage() {
             <div className="space-y-4">{d.new.length ? d.new.map(n => <Panel key={n.doc_id} title={`${SHORT[n.act] ?? n.act} · Section ${n.section}`} sub={n.act} text={clean(n.text)} doc={n.doc_id} />) : <Callout tone="warn" title="No counterpart recorded">This provision has no mapped counterpart in the curated table. It may have been repealed without replacement, as s.377 and s.309 of the IPC were.</Callout>}</div>
           </div>
           {d.diff && <Section title="What changed" desc="Written by the model from the two texts above. Check it against them before relying on it."
-            actions={<><PinButton labelled kind="comparison" title={`${act} ${section} → 2023 code`} body={`${d.diff.summary}\n\nChanges:\n${d.diff.changes.map(c => "- " + c).join("\n")}`} meta={{ to: `/app/transition?act=${act}&section=${section}` }} /><Link to={`/app/counsel?q=${encodeURIComponent(`What changed between ${act} section ${section} and its BNS/BNSS/BSA equivalent?`)}`}><Button size="sm"><MessageSquareText className="h-4 w-4" aria-hidden />Ask Counsel</Button></Link></>}>
+            actions={<><PinButton labelled kind="comparison" title={`${act} ${section} → 2023 code`} body={`${d.diff.summary}\n\nChanges:\n${d.diff.changes.map(c => "- " + c).join("\n")}`} meta={{ to: `/app/transition?act=${encodeURIComponent(act)}&section=${encodeURIComponent(section)}` }} /><Link to={`/app/counsel?q=${encodeURIComponent(`What changed between ${act} section ${section} and its BNS/BNSS/BSA equivalent?`)}`}><Button size="sm"><MessageSquareText className="h-4 w-4" aria-hidden />Ask Counsel</Button></Link></>}>
             <p className="max-w-[72ch] text-[15px] text-ink">{d.diff.summary}</p>
             <div className="mt-5 grid gap-x-10 gap-y-6 md:grid-cols-2">
               <div><H3 className="mb-2">Changed</H3>{d.diff.changes.length ? <Bullets items={d.diff.changes} /> : <Caption>Nothing of substance.</Caption>}</div>

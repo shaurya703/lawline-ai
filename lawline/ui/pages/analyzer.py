@@ -1,8 +1,10 @@
-import re, io
-import streamlit as st, pandas as pd
-from ..theme import hero, kpi, badges
+import io
+import streamlit as st
+from ..theme import hero, kpi, badges, esc
 from ..state import engine, llm_text
 from ...config import RetrievalConfig
+
+MAX_CHARS = 60_000   # about 10,000 words; every character is scanned once per act alias and concept
 
 
 def render():
@@ -17,8 +19,10 @@ def render():
             except Exception as e:
                 st.error(f"PDF read failed: {e}")
         else:
-            text = up.getvalue().decode(errors="ignore")
-    text = st.text_area("Document text", text or "", height=220, placeholder="Paste text here… e.g. 'The accused is charged under Sections 420 and 120B IPC and Section 66D of the IT Act…'")
+            text = up.getvalue()[:4 * MAX_CHARS].decode(errors="ignore")
+        if len(text) > MAX_CHARS:
+            st.caption(f"Only the first {MAX_CHARS:,} characters are analysed.")
+    text = st.text_area("Document text", text[:MAX_CHARS], height=220, max_chars=MAX_CHARS, placeholder="Paste text here… e.g. 'The accused is charged under Sections 420 and 120B IPC and Section 66D of the IT Act…'")[:MAX_CHARS]
     if not text.strip():
         return
     m = kg.extract_mentions(text); G = kg.g
@@ -43,9 +47,9 @@ def render():
     st.markdown("#### 🔎 Related law (hybrid retrieval on the document)")
     rr = eng.retriever.retrieve(text[:1500], RetrievalConfig(final_k=6))
     for p in rr.passages:
-        st.markdown(f'<div class="ll-src"><b>{p.chunk.citation}</b> {badges(p.sources)}<div style="margin-top:4px">{p.chunk.text[:400]}…</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="ll-src"><b>{esc(p.chunk.citation)}</b> {badges(p.sources)}<div style="margin-top:4px">{esc(p.chunk.text[:400])}…</div></div>', unsafe_allow_html=True)
     if st.button("🧠 Generate grounded brief", type="primary"):
         ctx = "\n\n".join(f"[{i+1}] ({p.citation})\n{p.text[:900]}" for i, p in enumerate(prov[:8])) + "\n\n" + "\n\n".join(f"[R{i+1}] ({p.chunk.citation})\n{p.chunk.text[:700]}" for i, p in enumerate(rr.passages))
         brief = llm_text("You are a legal analyst for Indian law. Using ONLY the provisions and passages given, write a brief with sections: Summary of the document; Provisions invoked (with what each provides, citing [n]); "
                          "Key legal issues; Possible defences / next steps; Missing information. Cite passages in brackets. End with a one-line disclaimer.", f"DOCUMENT:\n{text[:6000]}\n\nPROVISIONS AND PASSAGES:\n{ctx}", 1400)
-        st.markdown(brief); st.download_button("⬇️ Download brief", brief.encode(), "lawline_brief.md")
+        st.markdown(brief); st.download_button("⬇️ Download brief", brief.encode(), "lawline_brief.md", on_click="ignore")

@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from dataclasses import dataclass, field
+from dotenv import load_dotenv
 
 ROOT = Path(os.environ.get("LAWLINE_ROOT", Path(__file__).resolve().parent.parent))
+load_dotenv(ROOT / ".env")      # settings may live in .env: load it before this module, or any that imports it, reads one
 DATA_RAW = ROOT / "data" / "raw"
 DATA_PROCESSED = ROOT / "data" / "processed"
 OUT = ROOT / "outputs"

@@ -2,16 +2,26 @@ import { useSyncExternalStore } from "react";
 /** Tiny persistent store (localStorage) with React subscription — used for Case Files, settings and toasts. */
 function makeStore<T>(key: string | null, initial: T) {
   let state: T = initial;
-  if (key) { try { const raw = localStorage.getItem(key); if (raw) state = { ...initial, ...JSON.parse(raw) }; } catch { /* ignore */ } }
+  const load = (raw: string | null) => { if (!raw) return; try { const v: unknown = JSON.parse(raw); if (v && typeof v === "object" && !Array.isArray(v)) state = { ...initial, ...(v as Partial<T>) }; } catch { /* corrupt entry: keep the current state */ } };
+  if (key) { try { load(localStorage.getItem(key)); } catch { /* storage blocked */ } }
   const subs = new Set<() => void>();
-  const set = (patch: Partial<T> | ((s: T) => Partial<T>)) => { state = { ...state, ...(typeof patch === "function" ? patch(state) : patch) }; if (key) localStorage.setItem(key, JSON.stringify(state)); subs.forEach(f => f()); };
+  const emit = () => subs.forEach(f => f());
+  let warned = false;
+  const set = (patch: Partial<T> | ((s: T) => Partial<T>)) => {
+    state = { ...state, ...(typeof patch === "function" ? patch(state) : patch) };
+    if (key) { try { localStorage.setItem(key, JSON.stringify(state)); } catch { if (!warned) { warned = true; queueMicrotask(() => toast("Browser storage is full or blocked. Changes will be lost when this tab closes.", "warn")); } } }
+    emit();
+  };
+  // Another tab wrote this store: adopt its value so the next write from this tab does not overwrite it.
+  if (key && typeof window !== "undefined") window.addEventListener("storage", e => { if (e.key === key) { load(e.newValue); emit(); } });
+  const subscribe = (f: () => void) => { subs.add(f); return () => { subs.delete(f); }; };
   function use(): T;
   function use<R>(sel: (s: T) => R): R;
-  function use<R>(sel?: (s: T) => R) { const pick = sel ?? ((s: T) => s as unknown as R); return useSyncExternalStore(f => { subs.add(f); return () => subs.delete(f); }, () => pick(state), () => pick(state)); }
+  function use<R>(sel?: (s: T) => R) { const pick = sel ?? ((s: T) => s as unknown as R); return useSyncExternalStore(subscribe, () => pick(state), () => pick(state)); }
   return { get: () => state, set, use };
 }
 
-export type FileKind = "answer" | "provision" | "draft" | "brief" | "timeline" | "argument" | "note" | "comparison" | "quiz";
+export type FileKind = "answer" | "provision" | "draft" | "brief" | "timeline" | "argument" | "note" | "comparison";
 export type CaseItem = { id: string; kind: FileKind; title: string; body: string; meta?: Record<string, unknown>; note?: string; at: number; tags?: string[] };
 type Files = { items: CaseItem[]; matter: string };
 export const files = makeStore<Files>("lawline.files", { items: [], matter: "Untitled matter" });
@@ -25,7 +35,7 @@ export const settings = makeStore<Settings>("lawline.settings", { accent: "oxblo
 // Values saved by the previous interface (neon accents, icon rail) fall back to the defaults.
 if (!ACCENTS.includes(settings.get().accent)) settings.set({ accent: "oxblood" });
 if (settings.get().sidebar !== "expanded" && settings.get().sidebar !== "hidden") settings.set({ sidebar: "expanded" });
-export function applySettings(s: Settings) { const r = document.documentElement; r.dataset.accent = s.accent; r.dataset.density = s.density; r.dataset.motion = s.motion; }
+export function applySettings(s: Settings) { const r = document.documentElement; r.dataset.accent = s.accent; r.dataset.motion = s.motion; }
 
 /** Which sidebar groups are expanded. The group holding the current page is always shown open. */
 export const navState = makeStore<{ open: Record<string, boolean> }>("lawline.nav", { open: {} });
