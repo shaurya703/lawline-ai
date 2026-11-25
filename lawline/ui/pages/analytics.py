@@ -1,6 +1,6 @@
 import streamlit as st, plotly.graph_objects as go, plotly.express as px, pandas as pd, json
 from ..theme import hero, kpi, gauge, ACCENT, ACCENT2, GOLD, GREEN, RED, MUTED
-from ..state import results, train_meta
+from ..state import results, train_meta, older_corpus
 
 ROUTED = "routed: dense (narrative) | faiss+bm25+kg+rerank (question)"
 TASK = {"bns_qa": "BNS-QA", "ipc_facts": "IPC facts→section", "const_qa": "Constitution-QA", "sc_case": "SC case", "macro": "Macro"}
@@ -42,14 +42,18 @@ def render():
             fig.update_layout(barmode="group", title="Dense retriever R@5 before / after legal fine-tuning", height=340, yaxis=dict(range=[0, 1])); st.plotly_chart(fig, use_container_width=True)
     with tabs[2]:
         lc = results("ablation_ft_legalce/metrics.csv")
-        if ft is not None:
-            variants = [("no reranker", ft, "faiss+bm25+kg"), ("generic cross-encoder", ft, "faiss+bm25+kg+rerank"), ("legal cross-encoder (1 epoch)", lc, "faiss+bm25+kg+rerank"), ("dense only", ft, "faiss"), ("LawLine routed", ft, ROUTED)]
+        # The legal reranker has not been re-run since v1, so it is compared with the runs made on that corpus.
+        old = older_corpus("ablation_ft_legalce/meta.json"); rr = results("v1/ablation_ft/metrics.csv") if old else None
+        rr = rr if rr is not None else ft
+        if rr is not None:
+            variants = [("no reranker", rr, "faiss+bm25+kg"), ("generic cross-encoder", rr, "faiss+bm25+kg+rerank"), ("legal cross-encoder (1 epoch)", lc, "faiss+bm25+kg+rerank"), ("dense only", rr, "faiss"), ("LawLine routed", rr, ROUTED)]
             tasks = ["bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"]; fig = go.Figure()
             for lab, src, cfg in variants:
                 if src is None: continue
                 fig.add_trace(go.Bar(name=lab, x=[TASK[t] for t in tasks], y=[float(src[(src.task == t) & (src.config == cfg)]["R@5"].iloc[0]) for t in tasks]))
-            fig.update_layout(barmode="group", height=400, title="Recall@5 by reranking strategy", yaxis=dict(range=[0, 1])); st.plotly_chart(fig, use_container_width=True)
-            st.info("A generic web-trained reranker collapses narrative fact-pattern queries (0.325 → 0.023); a one-epoch legal reranker fixes that task but forgets general relevance. "
+            fig.update_layout(barmode="group", height=400, title="Recall@5 by reranking strategy" + (f" ({old} corpus)" if old else ""), yaxis=dict(range=[0, 1])); st.plotly_chart(fig, use_container_width=True)
+            ipc = lambda cfg: float(rr[(rr.task == "ipc_facts") & (rr.config == cfg)]["R@5"].iloc[0])
+            st.info(f"A generic web-trained reranker collapses narrative fact-pattern queries ({ipc('faiss'):.3f} → {ipc('faiss+bm25+kg+rerank'):.3f}); a one-epoch legal reranker fixes that task but forgets general relevance. "
                     "Routing long queries to the fine-tuned dense retriever keeps the best of both.")
     with tabs[3]:
         if ft is not None:
@@ -63,11 +67,13 @@ def render():
             st.plotly_chart(fig, use_container_width=True)
             fig = px.line(cs, x="chunk_words", y=["bns_qa_R@5", "ipc_facts_R@5", "const_qa_R@5", "sc_case_R@5"], facet_col="retriever", markers=True); fig.update_layout(height=320)
             st.plotly_chart(fig, use_container_width=True)
+            if older_corpus("chunk_sweep_meta.json"):
+                st.caption(f"Measured on the {older_corpus('chunk_sweep_meta.json')} corpus; not re-run since.")
     with tabs[5]:
         lat = results("ablation_ft/latency.json") or {}
         if lat:
             c = st.columns(5)
-            for col, (k, lab, mx) in zip(c, [("embed_single", "query embed", 60), ("faiss", "FAISS", 10), ("bm25", "BM25", 3000), ("kg", "KG", 200), ("rerank_per_pair", "rerank / pair", 20)]):
+            for col, (k, lab, mx) in zip(c, [("embed_single", "query embed", 60), ("faiss", "FAISS", 10), ("bm25", "BM25", 30), ("kg", "KG", 200), ("rerank_per_pair", "rerank / pair", 20)]):
                 with col: st.plotly_chart(gauge(lat[k]["p50_ms"], f"{lab} p50 ms", mx, "", ACCENT, 170), use_container_width=True, config={"displayModeBar": False})
             d = pd.DataFrame([{"stage": k, "p50": v["p50_ms"], "p95": v["p95_ms"], "mean": v["mean_ms"]} for k, v in lat.items() if k != "embed_batch_total_ms"])
             fig = go.Figure([go.Bar(name="p50", x=d.stage, y=d.p50, marker_color=ACCENT), go.Bar(name="p95", x=d.stage, y=d.p95, marker_color=ACCENT2)]); fig.update_layout(barmode="group", height=320, yaxis_type="log", title="Per-stage latency (ms, log)")
@@ -75,6 +81,8 @@ def render():
     with tabs[6]:
         ae = results("answer_eval/summary.json")
         if ae:
+            if older_corpus("answer_eval/summary.json"):
+                st.caption(f"Measured on the {older_corpus('answer_eval/summary.json')} corpus; not re-run since.")
             c = st.columns(4)
             with c[0]: kpi("AIBE closed-book", f"{ae['aibe']['closed_book_acc']*100:.1f}%", f"n={ae['aibe']['n']}")
             with c[1]: kpi("AIBE with LawLine", f"{ae['aibe']['rag_acc']*100:.1f}%", "same generator")

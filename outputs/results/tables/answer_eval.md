@@ -1,4 +1,4 @@
-**End-to-end answer quality (generator gemini-3.5-flash-lite, judge gemini-3.1-flash-lite)**
+**End-to-end answer quality (generator gemini-3.5-flash-lite, judge gemini-3.1-flash-lite, v1 corpus)**
 
 | Metric                                  |   Closed-book LLM |   LawLine RAG |
 |:----------------------------------------|------------------:|--------------:|

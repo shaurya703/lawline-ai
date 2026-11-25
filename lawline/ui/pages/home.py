@@ -1,6 +1,6 @@
 import streamlit as st, plotly.graph_objects as go, pandas as pd
 from ..theme import hero, kpi, ACCENT, ACCENT2, GOLD, GREEN, MUTED
-from ..state import corpus_stats, gold_stats, results, engine
+from ..state import corpus_stats, gold_stats, results, older_corpus
 
 
 def render():
@@ -16,10 +16,12 @@ def render():
     r5 = float(routed["R@5"].iloc[0]) if routed is not None and len(routed) else float("nan")
     nd = float(routed["nDCG@10"].iloc[0]) if routed is not None and len(routed) else float("nan")
     with c[2]: kpi("Recall@5", f"{r5:.3f}", "macro · routed system")
-    with c[3]: kpi("nDCG@10", f"{nd:.3f}", "BM25 baseline 0.525")
+    bm = df[(df.task == "macro") & (df.config == "bm25")] if df is not None else None
+    with c[3]: kpi("nDCG@10", f"{nd:.3f}", f"BM25 baseline {float(bm['nDCG@10'].iloc[0]):.3f}" if bm is not None and len(bm) else "macro · routed system")
     ae = results("answer_eval/summary.json") or {}
-    with c[4]: kpi("AIBE", f"{ae.get('aibe', {}).get('rag_acc', 0) * 100:.1f}%", f"closed-book {ae.get('aibe', {}).get('closed_book_acc', 0) * 100:.1f}%")
-    with c[5]: kpi("Faithfulness", f"{ae.get('rag', {}).get('faithfulness_mean(0-2)', 0):.2f}/2", "LLM-judged, grounded answers")
+    old = older_corpus("answer_eval/summary.json"); old = f" · {old} corpus" if old else ""
+    with c[4]: kpi("AIBE", f"{ae.get('aibe', {}).get('rag_acc', 0) * 100:.1f}%", f"closed-book {ae.get('aibe', {}).get('closed_book_acc', 0) * 100:.1f}%{old}")
+    with c[5]: kpi("Faithfulness", f"{ae.get('rag', {}).get('faithfulness_mean(0-2)', 0):.2f}/2", f"LLM-judged, grounded answers{old}")
     st.write("")
     left, right = st.columns([1.25, 1])
     with left:
@@ -53,7 +55,7 @@ def render():
                               height=330, legend=dict(orientation="h", y=-0.15), margin=dict(l=40, r=40, t=20, b=10))
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         st.markdown("#### 🧩 Modules")
-        mods = [("Dense retriever", "bge-small · legal fine-tuned", GREEN), ("BM25", "legal tokenizer · 69k chunks", GREEN), ("Knowledge graph", "46k nodes · 81k edges · 214 concepts", GREEN),
+        mods = [("Dense retriever", "bge-small · legal fine-tuned", GREEN), ("BM25", "legal tokenizer · inverted index", GREEN), ("Knowledge graph", "Acts, provisions, judgments, topics, concepts", GREEN),
                 ("Cross-encoder", "ms-marco MiniLM-L6", GREEN), ("Generator", "Gemini flash-lite · auto fallback", GREEN), ("Router", "length-based query routing", GREEN)]
         for n, d, col in mods:
             st.markdown(f'<div class="ll-mono"><span class="ll-pulse"></span><b style="color:#dfe7f5">{n}</b> · {d}</div>', unsafe_allow_html=True)

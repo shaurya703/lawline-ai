@@ -1,4 +1,4 @@
-**Chunk-size / overlap sweep on the core sub-corpus**
+**Chunk-size / overlap sweep on the core sub-corpus, v1 corpus**
 
 |   chunk_words |   overlap | retriever   |   n_chunks |   R@5 |   MRR@10 |   nDCG@10 |
 |--------------:|----------:|:------------|-----------:|------:|---------:|----------:|

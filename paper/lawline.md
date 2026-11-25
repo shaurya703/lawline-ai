@@ -1,5 +1,7 @@
 # LawLine AI: Knowledge-Graph-Augmented Hybrid Retrieval for Grounded Indian Legal Question Answering
 
+> **Note.** This document describes the first corpus (v1) and its results. The corpus has since been expanded (v2: 54,072 documents); current numbers are in the README, `outputs/results/tables` and `docs/DATA_SOURCES.md`.
+
 Saiprasad Benagi, Vaibhav Srivastava, Hita Rajashekhar, Shaurya Kesarwani, Nagegowda K S — Department of Computer Science and Engineering, PES University, Bengaluru
 
 *(Markdown rendering of `paper/lawline.tex`; compile the .tex with IEEEtran for the camera-ready PDF.)*
@@ -75,11 +77,11 @@ Table `gold` lists the four tasks. *BNS-QA*: questions about BNS/BNSS/BSA sectio
 | LawLine (routed)     |    0.625 |       0.000 |      0.897 |     0.976 |   0.624 |
 
 
-![Macro retrieval quality for each retriever combination (base embeddings).](../outputs/figures/ablation_base.png)
+![Macro retrieval quality for each retriever combination (base embeddings).](../outputs/results/v1/figures/ablation_base.png)
 *Fig. `ablation`: Macro retrieval quality for each retriever combination (base embeddings).*
 
 
-![Recall@5 per task.](../outputs/figures/per_task_base.png)
+![Recall@5 per task.](../outputs/results/v1/figures/per_task_base.png)
 *Fig. `pertask`: Recall@5 per task.*
 
 Table `ablation_base` and Fig. `ablation` report the ablation with the off-the-shelf encoder; Table `per_task_base` breaks Recall@5 down by task. Three observations hold across encoders. (i) *Fusion helps*: on the base encoder BM25 (macro R@5 0.559) and dense (0.541) fuse to 0.584, and adding the graph retriever lifts it to 0.610; the gain concentrates on statute questions (BNS-QA 0.43→0.56, Const-QA 0.80→0.89), exactly where users name sections, articles and concepts. (ii) *The graph is weak alone but complementary*: KG-only macro R@5 is 0.19 because it fires only when an entity is mentioned, yet its hits are precise (Const-QA 0.51 from article mentions alone). (iii) *Cross-encoder reranking adds a further +1.5 points* on the base encoder (0.625 macro, BNS-QA 0.625). SC-Case is close to saturated for every lexical configuration (R@5 ≥ 0.96) because summaries paraphrase the headnote, and we keep it mainly as a regression check for forgetting. The striking failure is IPC-Facts: with the base encoder *no* configuration exceeds R@5 0.02 even when retrieval is restricted to provisions—fact narratives (“petitioners are apprehending arrest … assaulted the informant”) share almost no vocabulary with the provision that governs them, and procedural words pull both BM25 and the generic dense model towards bail and writ provisions.
@@ -133,7 +135,7 @@ Table `sweep_base` varies the RRF weights. Equal weights are best; our initial h
 | LawLine (routed)     | Macro     |          0.585 |                0.685 |  0.100 |      0.624 |            0.725 |
 
 
-![Base vs.\ legally fine-tuned bi-encoder (nDCG@10).](../outputs/figures/base_vs_finetuned.png)
+![Base vs.\ legally fine-tuned bi-encoder (nDCG@10).](../outputs/results/v1/figures/base_vs_finetuned.png)
 *Fig. `ft`: Base vs.\ legally fine-tuned bi-encoder (nDCG@10).*
 
 Table `finetune` and Fig. `ft` compare the base and fine-tuned encoder under identical indices. One epoch over 13k triplets (33 minutes on a laptop CPU, 10.8M trainable parameters) raises dense-only macro R@5 from 0.541 to 0.709 and nDCG@10 from 0.503 to 0.664. BNS-QA improves from 0.41 to 0.68 R@5 on sections never seen in training, Const-QA from 0.79 to 0.90, and IPC-Facts from 0.00 to 0.325 (R@10 0.41) on held-out cases—the fine-tuned model has learned to map narrative facts to offence definitions, which neither lexical matching nor the general-domain encoder could do. The cost is a small regression on the task with no training data (SC-Case 0.964→0.930 dense-only), which fusion with BM25 recovers (0.978). With the stronger encoder the relative value of the other components changes: BM25 and KG fusion no longer help BNS-QA (0.680 vs 0.697) and *hurt* IPC-Facts (0.325→0.204), and the generic cross-encoder collapses IPC-Facts to 0.023 (Table `reranker`): trained on web passages, it rewards lexical overlap with the procedural boilerplate. A cross-encoder fine-tuned for one epoch on the same triplets fixes IPC-Facts (0.258) but forgets general relevance (SC-Case 0.98→0.28, BNS-QA 0.70→0.43). Because query types are cleanly separable by length (questions ≤40 words, fact narratives ≥115 words at the 5th percentile), LawLine AI routes narrative queries to the fine-tuned dense retriever alone and everything else through the full hybrid pipeline with the generic reranker. The routed system reaches macro R@5 0.725 / nDCG@10 0.685, a +16.6-point R@5 gain over BM25 and +10 points over the base-encoder hybrid (Table `ablation_ft`). For short questions (≤40 words) the top exact KG match is additionally guaranteed a slot in the final list when fusion and reranking drop it; offline replay shows this is neutral on the benchmark (macro R@5 0.725→0.724) while fixing vocabulary-gap queries such as “anticipatory bail under BNSS”, whose governing provision never contains the query words.
@@ -180,7 +182,7 @@ Table `chunk` sweeps window size and overlap on a controlled sub-corpus (core st
 | Gold provision explicitly cited         |           nan     |         0.750 |
 
 
-![Closed-book vs.\ grounded answers.](../outputs/figures/answer_eval.png)
+![Closed-book vs.\ grounded answers.](../outputs/results/v1/figures/answer_eval.png)
 *Fig. `answer`: Closed-book vs.\ grounded answers.*
 
 Table `answer` and Fig. `answer` summarise generation quality with the same generator (Gemini 3.5 Flash-Lite) with and without retrieval. On 150 All India Bar Examination questions, grounding raises accuracy from 64.7% to 68.0% (for reference, Legal Assist AI's fine-tuned LLaMA-3.1-8B reports 60.1% [2]). On held-out BNS/Constitution questions with expert reference answers, judged by a different model, the grounded system is fully correct for 67% of questions versus 54% closed-book (mean correctness 1.54 vs 1.46 on a 0–2 scale) and is judged fully faithful on every answer (2.0 vs 1.54): every legal claim it makes is traceable to a retrieved passage. The gold provision was among the five passages for 79% of questions and explicitly cited in 75% of answers (1.96 citations per answer); the generator abstained correctly when the passages did not contain the answer. Neither condition produced a fabricated citation on this sample; the sample is small (n=24 after API rate-limit failures) and we report it as indicative rather than conclusive.

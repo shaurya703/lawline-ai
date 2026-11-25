@@ -13,7 +13,7 @@ export default function Verify() {
   const marked = useMemo(() => { if (!out) return null; let i = 0; const parts: { t: string; c?: VerifyOut["citations"][number] }[] = []; const src = text; out.citations.forEach(c => { const at = src.indexOf(c.span, i); if (at < 0) return; parts.push({ t: src.slice(i, at) }); parts.push({ t: c.span, c }); i = at + c.span.length; }); parts.push({ t: src.slice(i) }); return parts; }, [out, text]);
   const share = out?.total ? out.verified / out.total : 0;
   return (
-    <Page title="Citation Verifier" desc="Paste a draft, a memo or a machine-written answer. Every “Section X of Y” is checked against the 36,000-provision corpus, so a section that does not exist is caught before it reaches a filing.">
+    <Page title="Citation Verifier" desc="Paste a draft, a memo or a machine-written answer. Every “Section X of Y” is checked against the provisions in the corpus, so a section that does not exist is caught before it reaches a filing.">
       <Workbench input={
         <Card className="space-y-4">
           <Field label="Text to check"><Textarea rows={12} value={text} onChange={e => setText(e.target.value)} placeholder="Paste text with statutory citations…" /></Field>

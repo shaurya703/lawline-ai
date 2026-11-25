@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check, GraduationCap, RotateCcw, X } from "lucide-react";
-import { api, type QuizCheck, type QuizQ } from "@/lib/api";
+import { api, measuredOn, type QuizCheck, type QuizQ, type Stats } from "@/lib/api";
+import { useFetch } from "@/lib/hooks";
 import { Button, Callout, Caption, Card, Empty, ErrorBox, Page, Passages, Progress, Section, Select, Skeleton, Stat, StatStrip } from "@/components/ui";
 import { Chart, C } from "@/lib/plotly";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ export default function Trainer() {
   async function start() { setBusy(true); setErr(null); setHist([]); setI(0); setChoice(null); setRes(null); try { const r = await api.get<{ total: number; questions: QuizQ[] }>(`/quiz?n=${n}&seed=${Math.floor(Math.random() * 1e6)}`); setQs(r.questions); setT0(performance.now()); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
   async function answer(c: number) { if (!qs || choice !== null) return; setChoice(c); setBusy(true); try { const r = await api.post<QuizCheck>("/quiz/check", { id: qs[i].id, choice: c, explain: true }); setRes(r); setHist(h => [...h, { q: qs[i], choice: c, res: r, ms: performance.now() - t0 }]); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
   function next() { setI(x => x + 1); setChoice(null); setRes(null); setT0(performance.now()); }
+  const st = useFetch(() => api.get<Stats>("/stats")); const aibe = st.data?.answer_eval?.aibe;
   const done = !!qs && i >= qs.length; const score = hist.filter(h => h.res.correct).length;
   useEffect(() => { if (done && score > best) { setBest(score); localStorage.setItem("lawline.quiz.best", String(score)); } if (done) logActivity("trainer", `Scored ${score}/${qs!.length} on AIBE set`, "/app/trainer"); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
@@ -54,7 +56,7 @@ export default function Trainer() {
         <StatStrip>
           <Stat label="Score" value={`${score} / ${qs.length}`} sub={pct >= 0.8 ? "Outstanding" : pct >= 0.6 ? "Comfortably above the pass mark" : pct >= 0.45 ? "Around the pass mark" : "Below the pass mark"} />
           <Stat label="Accuracy" value={`${Math.round(100 * pct)}%`} sub="AIBE pass mark is about 45%" />
-          <Stat label="LawLine on this bank" value="68%" sub="retrieval-augmented, n = 150" />
+          <Stat label="LawLine on this bank" value={aibe ? `${Math.round(aibe.rag_acc * 100)}%` : "…"} sub={aibe ? `retrieval-augmented, n = ${aibe.n}${measuredOn(st.data)}` : " "} />
           <Stat label="Best in this browser" value={best} sub="questions correct in one set" />
         </StatStrip>
         <div className="grid items-start gap-6 lg:grid-cols-2">

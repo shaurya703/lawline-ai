@@ -33,8 +33,9 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
   const nav = useNavigate(); const [q, setQ] = useState(""); const [i, setI] = useState(0);
   const rows = useMemo(() => {
     const pages = ALL.filter(p => (p.label + " " + p.desc).toLowerCase().includes(q.toLowerCase()));
-    const actions = q.trim() ? smart(q, nav) : [];
-    return [...actions.map(a => ({ key: "a:" + a.to, label: a.label, sub: "", icon: a.icon, run: a.run })), ...pages.map(p => ({ key: p.to, label: p.label, sub: p.desc, icon: p.icon, run: () => nav(p.to) }))];
+    const actions = (q.trim() ? smart(q, nav) : []).map(a => ({ key: "a:" + a.to, label: a.label, sub: "", icon: a.icon, run: a.run }));
+    const ask = actions.pop();                                  // the catch-all "Ask Counsel" goes last, so typing a module's name opens the module
+    return [...actions, ...pages.map(p => ({ key: p.to, label: p.label, sub: p.desc, icon: p.icon, run: () => nav(p.to) })), ...(ask ? [ask] : [])];
   }, [q, nav]);
   useEffect(() => { if (!open) { setQ(""); setI(0); } }, [open]);
   useEffect(() => setI(0), [q]);

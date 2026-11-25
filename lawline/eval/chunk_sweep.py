@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse, json, time
 import numpy as np
 import pandas as pd
-from ..config import CORPUS_PATH, RESULTS_DIR, RRF_K, BASE_EMBEDDING_MODEL
+from ..config import CORPUS_PATH, CORPUS_VERSION, RESULTS_DIR, RRF_K, BASE_EMBEDDING_MODEL
 from ..data.schema import Document, read_jsonl
 from ..data.chunking import chunk_document
 from ..index.embedder import Embedder
@@ -59,7 +59,7 @@ def main():
                          "embed_s": round(t_emb, 1), **macro, **{f"{t}_R@5": v["R@5"] for t, v in per_task.items()}})
             print(rows[-1])
     df = pd.DataFrame(rows); df.to_csv(RESULTS_DIR / "chunk_sweep.csv", index=False)
-    json.dump({"docs": len(docs), "queries": len(gold), "grid": GRID, "embed_model": a.embed_model}, open(RESULTS_DIR / "chunk_sweep_meta.json", "w"), indent=2)
+    json.dump({"docs": len(docs), "queries": len(gold), "grid": GRID, "embed_model": a.embed_model, "corpus": CORPUS_VERSION}, open(RESULTS_DIR / "chunk_sweep_meta.json", "w"), indent=2)
 
 
 if __name__ == "__main__":

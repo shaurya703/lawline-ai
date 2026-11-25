@@ -1,0 +1,9 @@
+**Recall@5 by reranking strategy (fine-tuned embeddings)**
+
+| Reranking strategy                                                |   BNS-QA |   IPC-Facts |   Const-QA |   SC-Case |   Macro |
+|:------------------------------------------------------------------|---------:|------------:|-----------:|----------:|--------:|
+| no reranker (faiss+bm25+kg)                                       |    0.697 |       0.204 |      0.921 |     0.980 |   0.700 |
+| generic cross-encoder (ms-marco-MiniLM-L-6)                       |    0.695 |       0.023 |      0.901 |     0.980 |   0.650 |
+| legal-fine-tuned cross-encoder (ours, 1 epoch)                    |    0.428 |       0.258 |      0.840 |     0.278 |   0.451 |
+| dense only (fine-tuned bi-encoder)                                |    0.680 |       0.325 |      0.899 |     0.930 |   0.709 |
+| LawLine routed (dense for narrative, hybrid+generic CE otherwise) |    0.695 |       0.325 |      0.901 |     0.980 |   0.725 |

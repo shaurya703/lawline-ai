@@ -27,5 +27,6 @@
       80
     ]
   ],
-  "embed_model": "outputs/models/lawline-bge-small-legal"
+  "embed_model": "outputs/models/lawline-bge-small-legal",
+  "corpus": "v1"
 }

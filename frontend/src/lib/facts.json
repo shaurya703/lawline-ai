@@ -1,0 +1,109 @@
+{
+  "corpus": {
+    "version": "v2",
+    "documents": 53746,
+    "provisions": 39383,
+    "judgments": 14363,
+    "chunks": 204426,
+    "sc_reports": 5367,
+    "hc_judgments": 2400,
+    "key_act_sections": 3111,
+    "landmarks": 137,
+    "acts_completed": 68,
+    "acts_added": 7,
+    "v1_documents": 42868,
+    "v1_judgments": 6596
+  },
+  "benchmark": {
+    "queries": 1810,
+    "systems": [
+      {
+        "system": "BM25",
+        "r1": 0.394,
+        "r5": 0.527,
+        "ndcg": 0.482,
+        "v1": {
+          "r1": 0.449,
+          "r5": 0.559,
+          "ndcg": 0.525
+        }
+      },
+      {
+        "system": "Dense, off the shelf (bge-small)",
+        "r1": 0.358,
+        "r5": 0.472,
+        "ndcg": 0.441,
+        "v1": {
+          "r1": 0.431,
+          "r5": 0.541,
+          "ndcg": 0.503
+        }
+      },
+      {
+        "system": "Hybrid: dense + BM25 + graph, fused and reranked",
+        "r1": 0.445,
+        "r5": 0.594,
+        "ndcg": 0.54,
+        "v1": {
+          "r1": 0.515,
+          "r5": 0.625,
+          "ndcg": 0.586
+        }
+      },
+      {
+        "system": "Dense, legally fine-tuned",
+        "r1": 0.422,
+        "r5": 0.648,
+        "ndcg": 0.58,
+        "v1": {
+          "r1": 0.526,
+          "r5": 0.709,
+          "ndcg": 0.664
+        }
+      },
+      {
+        "system": "LawLine: fine-tuned + hybrid + routing",
+        "r1": 0.49,
+        "r5": 0.694,
+        "ndcg": 0.637,
+        "v1": {
+          "r1": 0.563,
+          "r5": 0.725,
+          "ndcg": 0.685
+        }
+      }
+    ],
+    "right_type_r5": 0.714
+  },
+  "finetune": {
+    "ipc_facts": {
+      "base": 0.0,
+      "ft": 0.315
+    },
+    "bns_qa": {
+      "base": 0.293,
+      "ft": 0.653
+    }
+  },
+  "landmark": {
+    "questions": 73,
+    "hit5": 0.822,
+    "v1_hit5": 0.041,
+    "v1_held": 3
+  },
+  "latency_ms": {
+    "embed": 5,
+    "faiss": 4,
+    "bm25": 4,
+    "graph": 35,
+    "rerank": 146
+  },
+  "answers": {
+    "corpus": "v1",
+    "n": 150,
+    "closed_book": 0.647,
+    "with_retrieval": 0.68,
+    "faithfulness": 2.0,
+    "gold_cited": 0.75
+  }
+}

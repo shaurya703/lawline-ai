@@ -35,9 +35,12 @@ export const api = {
 };
 export type Passage = { rank: number; citation: string; text: string; sources: string[]; score: number; doc_id?: string; used?: boolean };
 export type ChatOut = { answer: string; translated?: string | null; search_query: string; followups: string[]; passages: Passage[]; timings_ms: Record<string, number>; model?: string };
-export type Stats = { corpus: Record<string, number>; gold: Record<string, { queries: number; train_pairs: number }>; kg: { nodes: Record<string, number>; edges: Record<string, number> }; answer_eval: Record<string, Record<string, number>> | null; chunks: number };
+export type Stats = { corpus: Record<string, number>; gold: Record<string, { queries: number; train_pairs: number }>; kg: { nodes: Record<string, number>; edges: Record<string, number> }; answer_eval: (Record<string, Record<string, number>> & { corpus?: string }) | null; chunks: number; corpus_version?: string };
 export type Row = Record<string, string | number | null>;
-export type Analytics = { ablation_base: Row[]; ablation_ft: Row[]; ablation_ft_legalce: Row[]; chunk_sweep: Row[]; latency: Record<string, { mean_ms: number; p50_ms: number; p95_ms: number }> | null; answer_eval: Record<string, Record<string, number>> | null; grounded: Row[]; train_biencoder: { loss_history: { step: number; loss: number }[] } | null; train_reranker: { loss_history: { step: number; loss: number }[] } | null };
+/** ", v1 corpus" when the answer-quality figures were measured on an older corpus than the one being served. */
+export const measuredOn = (s: Stats | null | undefined) => s?.answer_eval?.corpus && s.corpus_version && s.answer_eval.corpus !== s.corpus_version ? `, ${s.answer_eval.corpus} corpus` : "";
+export type CorpusVersion = { ablation_ft: Row[]; landmark: Record<string, number | string> | null; corpus: Record<string, number> | null };
+export type Analytics = { corpus_version: string; measured_on: Record<string, string>; corpus_versions: { v1: CorpusVersion; v2: CorpusVersion; v2_right_type: Row[] } | null; ablation_base: Row[]; ablation_ft: Row[]; ablation_ft_legalce: Row[]; chunk_sweep: Row[]; latency: Record<string, { mean_ms: number; p50_ms: number; p95_ms: number }> | null; answer_eval: Record<string, Record<string, number>> | null; grounded: Row[]; train_biencoder: { loss_history: { step: number; loss: number }[] } | null; train_reranker: { loss_history: { step: number; loss: number }[] } | null };
 export type Prov = { act: string; section: string; title: string; doc_id: string; text: string };
 export type Transition = { old: Prov | null; new: Prov[]; concepts: string[]; diff: { summary: string; changes: string[]; unchanged: string[]; severity_old: string; severity_new: string } | null };
 export type MapRow = { old_act: string; old_section: string; new_act: string; new_sections: string[]; concepts: string[] };

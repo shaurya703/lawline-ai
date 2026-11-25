@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import pandas as pd
-from ..config import RESULTS_DIR, DATA_PROCESSED
+from ..config import RESULTS_DIR, DATA_PROCESSED, CORPUS_VERSION
 
 OUT = RESULTS_DIR / "tables"
 ROUTED = "routed: dense (narrative) | faiss+bm25+kg+rerank (question)"
@@ -11,6 +11,13 @@ ORDER = ["bm25", "faiss", "kg", "faiss+bm25", "faiss+kg", "bm25+kg", "faiss+bm25
          "faiss+bm25+rerank", "faiss+bm25+kg+rerank", ROUTED]
 SHORT = {ROUTED: "LawLine (routed)"}
 TASK = {"bns_qa": "BNS-QA", "ipc_facts": "IPC-Facts", "const_qa": "Const-QA", "sc_case": "SC-Case", "macro": "Macro"}
+
+
+def measured_on(meta_path: Path) -> str:
+    """', v1 corpus' when the result behind a table was measured on an older corpus than the current one, else ''."""
+    meta = json.load(open(meta_path)) if Path(meta_path).exists() else {}
+    v = meta.get("corpus", CORPUS_VERSION)
+    return f", {v} corpus" if v != CORPUS_VERSION else ""
 
 
 def _write(name: str, df: pd.DataFrame, caption: str, label: str, fmt="%.3f"):
@@ -60,6 +67,9 @@ def base_vs_ft():
 
 def reranker_table():
     f, l = RESULTS_DIR / "ablation_ft/metrics.csv", RESULTS_DIR / "ablation_ft_legalce/metrics.csv"
+    old = measured_on(RESULTS_DIR / "ablation_ft_legalce/meta.json")      # the legal reranker has not been re-run since v1:
+    v1 = RESULTS_DIR / "v1/ablation_ft/metrics.csv"                       # compare it with the runs on the same corpus
+    f = v1 if old and v1.exists() else f
     if not (f.exists() and l.exists()):
         return
     f, l = pd.read_csv(f), pd.read_csv(l)
@@ -71,14 +81,14 @@ def reranker_table():
         for t in ("bns_qa", "ipc_facts", "const_qa", "sc_case", "macro"):
             r[TASK[t]] = src[(src.config == cfg) & (src.task == t)]["R@5"].iloc[0]
         rows.append(r)
-    _write("reranker_variants", pd.DataFrame(rows), "Recall@5 by reranking strategy (fine-tuned embeddings)", "tab:reranker")
+    _write("reranker_variants", pd.DataFrame(rows), f"Recall@5 by reranking strategy (fine-tuned embeddings{old})", "tab:reranker")
 
 
 def chunk_table():
     p = RESULTS_DIR / "chunk_sweep.csv"
     if p.exists():
         df = pd.read_csv(p)[["chunk_words", "overlap", "retriever", "n_chunks", "R@5", "MRR@10", "nDCG@10"]]
-        _write("chunk_sweep", df, "Chunk-size / overlap sweep on the core sub-corpus", "tab:chunk")
+        _write("chunk_sweep", df, "Chunk-size / overlap sweep on the core sub-corpus" + measured_on(RESULTS_DIR / "chunk_sweep_meta.json"), "tab:chunk")
 
 
 def answer_table():
@@ -95,7 +105,7 @@ def answer_table():
             rows.append({"Metric": lab, "Closed-book LLM": s["closed"][k], "LawLine RAG": s["rag"][k]})
         rows.append({"Metric": "Retrieval hit (gold provision in top-5)", "Closed-book LLM": float("nan"), "LawLine RAG": s["rag"]["retrieval_hit_rate"]})
         rows.append({"Metric": "Gold provision explicitly cited", "Closed-book LLM": float("nan"), "LawLine RAG": s["rag"]["gold_cited_rate"]})
-    _write("answer_eval", pd.DataFrame(rows), f"End-to-end answer quality (generator {s.get('generator')}, judge {s.get('judge')})", "tab:answer")
+    _write("answer_eval", pd.DataFrame(rows), f"End-to-end answer quality (generator {s.get('generator')}, judge {s.get('judge')}{measured_on(p)})", "tab:answer")
 
 
 def data_table():

@@ -25,7 +25,9 @@ export default function Provisions() {
   const [act, setAct] = useState(params.get("act") ?? FAV[0]); const [q, setQ] = useState(""); const [doc, setDoc] = useState<string | null>(params.get("doc"));
   const [simple, setSimple] = useState<Simplified | null>(null); const [simpleBusy, setSimpleBusy] = useState(false); const [view, setView] = useState<"largest" | "years">("largest");
   const wantSec = params.get("sec");
-  const secs = useFetch(() => api.get<Sec[]>(`/acts/sections?act=${encodeURIComponent(act)}&q=${encodeURIComponent(q)}`), [act, q]);
+  // Tagged with the Act it was fetched for: useFetch keeps the previous list while the next one loads.
+  const secsFor = useFetch(() => api.get<Sec[]>(`/acts/sections?act=${encodeURIComponent(act)}&q=${encodeURIComponent(q)}`).then(rows => ({ act, rows })), [act, q]);
+  const secs = { ...secsFor, data: secsFor.data?.act === act ? secsFor.data.rows : null };
   const prov = useFetch(() => doc ? api.get<Prov>(`/provision?doc_id=${encodeURIComponent(doc)}`) : Promise.resolve(null), [doc]);
   useEffect(() => { if (prov.data?.act && prov.data.act !== act) setAct(prov.data.act); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prov.data]);

@@ -4,7 +4,7 @@ import { useFetch } from "@/lib/hooks";
 import { ErrorBox, H3, Page, Section, Skeleton } from "@/components/ui";
 import Pipeline from "@/components/Pipeline";
 
-const SOURCES: Record<string, string> = { bare_acts: "India Code bare Acts", bns_family: "BNS, BNSS and BSA (2023)", ipc: "Indian Penal Code", constitution: "Constitution of India", sc2016: "Supreme Court Reports, 2016", hc_excerpts: "High Court excerpts", landmark: "Landmark judgments" };
+const SOURCES: Record<string, string> = { bare_acts: "India Code bare Acts", bns_family: "BNS, BNSS and BSA (2023)", ipc: "Indian Penal Code", constitution: "Constitution of India", sc2016: "Supreme Court Reports, 2016", hc_excerpts: "Patna High Court excerpts", landmark: "Landmark judgments (Phase II)", key_acts: "Key central Acts, completed sections", sc_reports: "Supreme Court Reports, 1950–2025", hc_judgments: "High Court judgments, 24 High Courts" };
 const TASKS: Record<string, string> = { bns_qa: "BNS questions", ipc_facts: "IPC fact pattern to section", const_qa: "Constitution questions", sc_case: "Supreme Court case retrieval" };
 const NODES: Record<string, string> = { act: "Acts", section: "Provisions", case: "Judgments", topic: "Topics", concept: "Curated concepts" };
 const EDGES: Record<string, string> = { HAS_SECTION: "Act has section", REFERS_TO: "Provision refers to provision", CITES: "Judgment cites provision", ABOUT: "Judgment is about topic", CITES_CASE: "Judgment cites judgment", GOVERNED_BY: "Concept governed by provision" };
@@ -71,8 +71,8 @@ export default function Methodology() {
 
       <Section title="Sources and limitations">
         <div className="space-y-3">
-          <p className={prose}>The corpus is built from the India Code bare-Acts dump, the BNS, BNSS and BSA 2023 sections and question sets, the Indian Penal Code (offence tables and commentary text), the official text of the Constitution of India, Supreme Court Reports 2016, High Court excerpts and AIBE multiple-choice questions. All of it is public; judgments are public records under section 52(1)(q) of the Copyright Act, 1957.</p>
-          <p className={prose}>Case-law coverage is partial, and the generator is a hosted model with a daily free-tier quota. LawLine provides legal information grounded in retrieved sources. It is not legal advice: always read the cited passage before relying on an answer.</p>
+          <p className={prose}>The corpus is built from the India Code bare-Acts dump, the BNS, BNSS and BSA 2023 sections and question sets, the Indian Penal Code (offence tables and commentary text), the official text of the Constitution of India, Supreme Court Reports from 1950 to 2025 (a sample of each year, and the landmark decisions added by name), judgments of all 25 High Courts and AIBE multiple-choice questions. All of it is public; judgments are public records under section 52(1)(q) of the Copyright Act, 1957.</p>
+          <p className={prose}>Case-law coverage is a sample, not the full reports: long judgments keep their headnote and final order only, and the oldest reports are scanned text with spelling noise. Adding judgments made the statute benchmarks harder, because a judgment on the same topic can outrank the section a question is about (see Analytics, Corpus v1 and v2). The generator is a hosted model with a daily free-tier quota. LawLine provides legal information grounded in retrieved sources. It is not legal advice: always read the cited passage before relying on an answer.</p>
         </div>
       </Section>
     </Page>
