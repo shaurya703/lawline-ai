@@ -1,5 +1,5 @@
 import { Bookmark, BookmarkCheck, Check, CircleAlert, Copy, Info, TriangleAlert, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { Component, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { pin, toasts, type FileKind } from "@/lib/store";
 import { copy as copyText } from "@/lib/export";
@@ -149,34 +149,70 @@ export function Callout({ tone = "info", title, children, className }: { tone?: 
   return <div className={cn("flex gap-3 rounded-lg border p-4 text-[14px]", c, className)}><I className={cn("mt-0.5 h-4 w-4 shrink-0", ic)} aria-hidden /><div className="min-w-0 flex-1">{title && <div className="mb-1 font-semibold text-ink">{title}</div>}<div className="text-ink">{children}</div></div></div>;
 }
 export function Skeleton({ className }: { className?: string }) { return <div className={cn("skeleton", className)} aria-hidden />; }
-export function ErrorBox({ error, retry }: { error: string; retry?: () => void }) {
-  return <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-bad/25 bg-bad-soft p-4 text-[14px]"><CircleAlert className="h-4 w-4 shrink-0 text-bad" aria-hidden /><div className="min-w-0 flex-1"><span className="font-semibold">Request failed.</span> <span className="break-words font-mono text-[12.5px] text-ink-2">{error}</span></div>{retry && <Button size="sm" onClick={retry}>Retry</Button>}</div>;
+export function ErrorBox({ error, retry, title = "Request failed.", retryLabel = "Retry" }: { error: string; retry?: () => void; title?: string; retryLabel?: string }) {
+  return <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-bad/25 bg-bad-soft p-4 text-[14px]"><CircleAlert className="h-4 w-4 shrink-0 text-bad" aria-hidden /><div className="min-w-0 flex-1"><span className="font-semibold">{title}</span> <span className="break-words font-mono text-[12.5px] text-ink-2">{error}</span></div>{retry && <Button size="sm" onClick={retry}>{retryLabel}</Button>}</div>;
 }
-export function Empty({ icon, title, desc, children }: { icon?: ReactNode; title: string; desc?: ReactNode; children?: ReactNode }) {
-  return <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-line-strong px-6 py-14 text-center">{icon && <div className="mb-3 text-ink-3">{icon}</div>}<div className="text-[15px] font-semibold text-ink">{title}</div>{desc && <p className="mt-1 max-w-md text-[14px] text-ink-3">{desc}</p>}{children && <div className="mt-4">{children}</div>}</div>;
+/** A page that throws while rendering, or whose code fails to load, is reported in place instead of blanking the app.
+ *  The error is cleared when `resetKey` changes; the shell passes the route. */
+type BoundaryProps = { resetKey?: string; children: ReactNode };
+type BoundaryState = { error: unknown; key?: string };
+export class PageBoundary extends Component<BoundaryProps, BoundaryState> {
+  state: BoundaryState = { error: null, key: this.props.resetKey };
+  static getDerivedStateFromError(error: unknown) { return { error }; }
+  static getDerivedStateFromProps(props: BoundaryProps, state: BoundaryState) { return props.resetKey === state.key ? null : { error: null, key: props.resetKey }; }
+  render() {
+    if (this.state.error === null) return this.props.children;
+    return <ErrorBox title="This page could not be displayed." error={String(this.state.error)} retry={() => location.reload()} retryLabel="Reload" />;
+  }
+}
+export function Empty({ icon, title, desc }: { icon?: ReactNode; title: string; desc?: ReactNode }) {
+  return <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-line-strong px-6 py-14 text-center">{icon && <div className="mb-3 text-ink-3">{icon}</div>}<div className="text-[15px] font-semibold text-ink">{title}</div>{desc && <p className="mt-1 max-w-md text-[14px] text-ink-3">{desc}</p>}</div>;
 }
 
 /* ---------------------------------------------------------------- overlays */
 
-function useEscape(open: boolean, onClose: () => void) { useEffect(() => { if (!open) return; const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); }; window.addEventListener("keydown", h); return () => window.removeEventListener("keydown", h); }, [open, onClose]); }
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+/** Modal dialog behaviour: Escape closes, focus moves in, Tab stays in, focus returns to the opener on close. */
+function useDialog<E extends HTMLElement>(open: boolean, onClose: () => void) {
+  const ref = useRef<E>(null); const close = useRef(onClose);
+  useEffect(() => { close.current = onClose; });
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null; const box = ref.current; box?.focus();
+    const h = (e: KeyboardEvent) => {
+      // A key pressed inside a dialog opened over this one (the command palette) is that dialog's own. The event's target
+      // is used, not the focused element: by the time the key reaches the window the other dialog may have closed itself.
+      const held = e.target instanceof Element ? e.target.closest('[role="dialog"]') : null;
+      if (held && held !== box && !box?.contains(held)) return;
+      if (e.key === "Escape") { close.current(); return; }
+      if (e.key !== "Tab" || !box) return;
+      const f = box.querySelectorAll<HTMLElement>(FOCUSABLE); const first = f[0], last = f[f.length - 1], a = document.activeElement;
+      if (!first) { e.preventDefault(); return; }
+      if (!box.contains(a) || (e.shiftKey ? a === first || a === box : a === last)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => { window.removeEventListener("keydown", h); opener?.focus(); };
+  }, [open]);
+  return ref;
+}
 export function Drawer({ open, onClose, title, children, width = 440 }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; width?: number }) {
-  useEscape(open, onClose);
+  const ref = useDialog<HTMLElement>(open, onClose); const id = useId();
   if (!open) return null;
   return (<>
     <div className="anim-fade fixed inset-0 z-50 bg-ink/25" onClick={onClose} />
-    <aside role="dialog" aria-modal className="anim-slide fixed inset-y-0 right-0 z-50 flex flex-col border-l border-line bg-surface shadow-pop" style={{ width: `min(${width}px, 100vw)` }}>
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-5"><div className="text-[15px] font-semibold">{title}</div><IconButton label="Close" onClick={onClose}><X className="h-4 w-4" /></IconButton></div>
+    <aside ref={ref} tabIndex={-1} role="dialog" aria-modal aria-labelledby={id} className="anim-slide fixed inset-y-0 right-0 z-50 flex flex-col border-l border-line bg-surface shadow-pop" style={{ width: `min(${width}px, 100vw)` }}>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-5"><div id={id} className="text-[15px] font-semibold">{title}</div><IconButton label="Close" onClick={onClose}><X className="h-4 w-4" /></IconButton></div>
       <div className="flex-1 overflow-auto p-5">{children}</div>
     </aside>
   </>);
 }
-export function Modal({ open, onClose, title, children, wide }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; wide?: boolean }) {
-  useEscape(open, onClose);
+export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode }) {
+  const ref = useDialog<HTMLDivElement>(open, onClose); const id = useId();
   if (!open) return null;
   return (
     <div className="anim-fade fixed inset-0 z-50 flex items-center justify-center bg-ink/25 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal className={cn("anim-rise max-h-[85vh] w-full overflow-auto rounded-lg border border-line bg-surface p-5 shadow-pop", wide ? "max-w-3xl" : "max-w-lg")} onClick={e => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between"><div className="text-[15px] font-semibold">{title}</div><IconButton label="Close" onClick={onClose}><X className="h-4 w-4" /></IconButton></div>
+      <div ref={ref} tabIndex={-1} role="dialog" aria-modal aria-labelledby={id} className="anim-rise max-h-[85vh] w-full max-w-lg overflow-auto rounded-lg border border-line bg-surface p-5 shadow-pop" onClick={e => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between"><div id={id} className="text-[15px] font-semibold">{title}</div><IconButton label="Close" onClick={onClose}><X className="h-4 w-4" /></IconButton></div>
         {children}
       </div>
     </div>
@@ -200,11 +236,11 @@ export function CopyButton({ text, labelled }: { text: string; labelled?: boolea
 }
 type PassageLike = { rank: number; citation: string; text: string; sources: string[]; score?: number; used?: boolean; doc_id?: string };
 /** Retrieved passages. A passage the answer cites is marked; the excerpt is serif because it is source text. */
-export function Passages({ items, usedSet, compact }: { items: PassageLike[]; usedSet?: Set<number>; compact?: boolean }) {
+export function Passages({ items, compact }: { items: PassageLike[]; compact?: boolean }) {
   const max = compact ? 220 : 480;
   return (
     <ol className="divide-y divide-line rounded-lg border border-line bg-surface">
-      {items.map(p => { const used = p.used ?? usedSet?.has(p.rank); return (
+      {items.map(p => { const used = p.used; return (
         <li key={p.rank} className="p-3.5">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className={cn("num rounded px-1.5 font-mono text-[11px] font-medium leading-5", used ? "bg-accent-soft text-accent" : "bg-sunken text-ink-3")}>[{p.rank}]</span>

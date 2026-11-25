@@ -14,8 +14,12 @@ export function useDictation(onText: (t: string) => void, lang = "en-IN") {
   useEffect(() => () => ref.current?.abort(), []);
   return { supported, listening, start, stop, toggle: () => (listening ? stop() : start()) };
 }
-export function speak(text: string, lang = "en-IN") {
+let current: SpeechSynthesisUtterance | null = null;
+export function speak(text: string, lang = "en-IN", onEnd?: () => void) {
   if (!("speechSynthesis" in globalThis)) return false;
-  speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text.replace(/\[\d+(,\s*\d+)*\]/g, "").replace(/[*#_`]/g, "")); u.lang = lang; u.rate = 1.02; speechSynthesis.speak(u); return true;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/\[\d+(,\s*\d+)*\]/g, "").replace(/[*#_`]/g, "")); u.lang = lang; u.rate = 1.02;
+  u.onend = u.onerror = () => { if (current === u) { current = null; onEnd?.(); } };   // ignore the event of an utterance that was replaced
+  current = u; speechSynthesis.speak(u); return true;
 }
-export const stopSpeaking = () => { if ("speechSynthesis" in globalThis) speechSynthesis.cancel(); };
+export const stopSpeaking = () => { current = null; if ("speechSynthesis" in globalThis) speechSynthesis.cancel(); };

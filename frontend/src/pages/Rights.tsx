@@ -10,23 +10,24 @@ const ICONS: Record<string, LucideIcon> = { handcuffs: Siren, "file-warning": Fi
 export default function Rights() {
   const [params, setParams] = useSearchParams(); const id = params.get("s");
   const list = useFetch(() => api.get<RightsItem[]>("/rights"));
-  const det = useFetch(() => id ? api.get<RightsDetail>(`/rights?scenario=${id}`) : Promise.resolve(null), [id]);
-  const [step, setStep] = useState(0);
+  const det = useFetch(() => id ? api.get<RightsDetail>(`/rights?scenario=${encodeURIComponent(id)}`) : Promise.resolve(null), [id]);
+  const [step, setStep] = useState(0); const [stepFor, setStepFor] = useState(id);
+  if (stepFor !== id) { setStepFor(id); setStep(0); }   // another guide, including one reached with Back, starts at step 1
   const d = det.data;
   return (
     <Page title="Rights Guides" desc="What to do in a common situation, in what order, and which provision gives you the right. Each step links to the statute text."
-      actions={id && <Button onClick={() => { setParams({}); setStep(0); }}><ArrowLeft className="h-4 w-4" />All guides</Button>}>
+      actions={id && <Button onClick={() => setParams({})}><ArrowLeft className="h-4 w-4" />All guides</Button>}>
       {list.error ? <ErrorBox error={list.error} /> : !id ? (
         !list.data ? <Skeleton className="h-96" /> : (
           <Card flush className="grid overflow-hidden sm:grid-cols-2">
             {list.data.map(r => { const I = ICONS[r.icon] ?? Shield; return (
-              <button key={r.id} onClick={() => { setParams({ s: r.id }); setStep(0); }} className="group flex items-start gap-3.5 border-b border-line p-5 text-left transition-colors hover:bg-sunken sm:odd:border-r">
+              <button key={r.id} onClick={() => setParams({ s: r.id })} className="group flex items-start gap-3.5 border-b border-line p-5 text-left transition-colors hover:bg-sunken sm:odd:border-r">
                 <I className="mt-0.5 h-5 w-5 shrink-0 text-ink-3 group-hover:text-accent" aria-hidden />
                 <span className="min-w-0 flex-1"><span className="block text-[15px] font-medium text-ink group-hover:text-accent">{r.title}</span><span className="mt-0.5 block text-[13.5px] text-ink-3">{r.summary}</span></span>
                 <span className="num flex shrink-0 items-center gap-1 text-[12.5px] text-ink-3">{r.steps} steps<ChevronRight className="h-3.5 w-3.5" aria-hidden /></span>
               </button>); })}
           </Card>)
-      ) : det.error ? <ErrorBox error={det.error} /> : !d ? <Skeleton className="h-96" /> : (
+      ) : det.error ? <ErrorBox error={det.error} /> : det.loading || !d ? <Skeleton className="h-96" /> : (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Card flush>
             <div className="border-b border-line p-5">
@@ -44,7 +45,7 @@ export default function Rights() {
             <div className="flex flex-wrap items-center gap-2 border-t border-line p-4">
               <Button variant="primary" onClick={() => setStep(s => Math.min(d.steps.length - 1, s + 1))} disabled={step >= d.steps.length - 1}>Next step</Button>
               <Link to={`/app/counsel?q=${encodeURIComponent(d.title + " — what are my options and rights in detail?")}`}><Button><MessageSquareText className="h-4 w-4" />Ask Counsel about this</Button></Link>
-              <span className="ml-auto"><PinButton labelled kind="note" title={d.title} body={d.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")} meta={{ to: `/app/rights?s=${id}` }} /></span>
+              <span className="ml-auto"><PinButton labelled kind="note" title={d.title} body={d.steps.map((s, i) => `${i + 1}. ${s}`).join("\n")} meta={{ to: `/app/rights?s=${encodeURIComponent(id)}` }} /></span>
             </div>
           </Card>
           <aside>

@@ -5,11 +5,14 @@ import { Bullets, Button, Card, Empty, ErrorBox, Field, H3, Input, Meter, Page, 
 import { Chart, C } from "@/lib/plotly";
 import { logActivity } from "@/lib/store";
 
+// Model output: JSON mode guarantees the syntax, not that every list is present.
+const list = <T,>(x: T[] | undefined): T[] => Array.isArray(x) ? x : [];
+const sideOf = (s: ArgueOut["side_a"] | undefined, name: string) => ({ name: s?.name || name, arguments: list(s?.arguments) });
 const SAMPLE = `Accused A, aged 24, was seen arguing with the deceased B outside a bar at 11 pm. Witnesses say B slapped A first. A picked up a beer bottle from a table, struck B once on the head and fled. B died in hospital two days later from a skull fracture. A surrendered the next morning and has no prior record. The post-mortem notes a single injury. CCTV covers the entrance but not the spot of the incident. A claims he acted in self-defence and in the heat of the moment.`;
 
 export default function Arena() {
   const [facts, setFacts] = useState(""); const [forum, setForum] = useState("Sessions Court"); const [side, setSide] = useState("both"); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [out, setOut] = useState<ArgueOut | null>(null);
-  async function run(f = facts) { if (f.trim().length < 20) return; setBusy(true); setErr(null); try { const r = await api.post<ArgueOut>("/argue", { facts: f, side, forum }); setOut(r); logActivity("arena", "Arguments built", "/app/arena"); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
+  async function run(f = facts) { if (f.trim().length < 20) return; setBusy(true); setErr(null); try { const r = await api.post<ArgueOut>("/argue", { facts: f, side, forum }); setOut({ ...r, issues: list(r.issues), pivotal_facts: list(r.pivotal_facts), questions_bench_may_ask: list(r.questions_bench_may_ask), passages: list(r.passages), side_a: sideOf(r.side_a, "Side A"), side_b: sideOf(r.side_b, "Side B"), confidence: Number(r.confidence) || 0 }); logActivity("arena", "Arguments built", "/app/arena"); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
   const avg = (a: Argument[]) => a.length ? a.reduce((n, x) => n + x.strength, 0) / a.length : 0;
   const md = out ? `# Argument map\n\n## Issues\n${out.issues.map(i => "- " + i).join("\n")}\n\n## ${out.side_a.name}\n${out.side_a.arguments.map(a => `- **${a.point}** (${a.strength}/5) — ${a.basis}`).join("\n")}\n\n## ${out.side_b.name}\n${out.side_b.arguments.map(a => `- **${a.point}** (${a.strength}/5) — ${a.basis}`).join("\n")}\n\n**Likely outcome:** ${out.likely_outcome}` : "";
   return (
@@ -21,7 +24,7 @@ export default function Arena() {
           <Field label="Focus"><Select value={side} onChange={e => setSide(e.target.value)}><option value="both">Both sides</option><option value="prosecution">Prosecution</option><option value="defence">Defence</option><option value="petitioner">Petitioner</option><option value="respondent">Respondent</option></Select></Field>
           <div className="flex flex-wrap gap-2">
             <Button variant="primary" onClick={() => void run()} disabled={busy || facts.trim().length < 20}><Swords className="h-4 w-4" aria-hidden />{busy ? "Arguing…" : "Argue both sides"}</Button>
-            <Button variant="ghost" onClick={() => { setFacts(SAMPLE); void run(SAMPLE); }}>Try a sample case</Button>
+            <Button variant="ghost" disabled={busy} onClick={() => { setFacts(SAMPLE); void run(SAMPLE); }}>Try a sample case</Button>
           </div>
         </Card>}>
         {err && <ErrorBox error={err} retry={() => void run()} />}

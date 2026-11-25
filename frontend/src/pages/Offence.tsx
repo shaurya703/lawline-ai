@@ -19,6 +19,7 @@ function Tri({ v, yes, no }: { v: boolean | null; yes: string; no: string }) {
 
 export default function OffencePage() {
   const [params, setParams] = useSearchParams(); const q0 = params.get("q") ?? ""; const [q, setQ] = useState(q0);
+  const [seen, setSeen] = useState(q0); if (seen !== q0) { setSeen(q0); setQ(q0); }   // Back and Forward change the query: keep the box in step with the results
   const r = useFetch(() => q0 ? api.get<{ query: string; results: Offence[] }>(`/offence?q=${encodeURIComponent(q0)}`) : Promise.resolve(null), [q0]);
   const res = r.data?.results ?? [];
   const code = (o: Offence) => o.act.startsWith("Indian") ? "IPC" : "BNS";
@@ -56,9 +57,9 @@ export default function OffencePage() {
               </div>
               <footer className="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
                 <Link to={`/app/provisions?doc=${encodeURIComponent(o.doc_id)}`}><Button size="sm">Full text</Button></Link>
-                <Link to={`/app/transition?act=${code(o)}&section=${o.section}`}><Button size="sm">{isIpc ? "BNS equivalent" : "IPC origin"}</Button></Link>
+                <Link to={`/app/transition?act=${code(o)}&section=${encodeURIComponent(o.section)}`}><Button size="sm">{isIpc ? "BNS equivalent" : "IPC origin"}</Button></Link>
                 <Link to={`/app/counsel?q=${encodeURIComponent(`Explain Section ${o.section} ${code(o)} with an example`)}`}><Button size="sm" variant="ghost">Ask Counsel</Button></Link>
-                <span className="ml-auto"><PinButton kind="provision" title={`${code(o)} s.${o.section} — ${o.concept ?? "offence"}`} body={o.text} meta={{ to: `/app/provisions?doc=${o.doc_id}` }} /></span>
+                <span className="ml-auto"><PinButton kind="provision" title={`${code(o)} s.${o.section} — ${o.concept ?? "offence"}`} body={o.text} meta={{ to: `/app/provisions?doc=${encodeURIComponent(o.doc_id)}` }} /></span>
               </footer>
             </Card>); })}
         </div>

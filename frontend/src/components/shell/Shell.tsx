@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeftRight, BookMarked, ChevronRight, FolderOpen, Gavel, Menu, PanelLeft, ScrollText, Search, Siren, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { apiState, applySettings, files, navState, settings } from "@/lib/store";
 import { ALL, HOME, NAV, WORKSPACE, groupOf, itemOf } from "./nav";
-import { Drawer, IconButton, Modal, Toasts } from "@/components/ui";
+import { Drawer, IconButton, Modal, PageBoundary, Skeleton, Toasts } from "@/components/ui";
 import CaseFilesPanel from "@/pages/CaseFiles";
 
 export function Wordmark({ className }: { className?: string }) {
@@ -41,13 +41,13 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
   useEffect(() => setI(0), [q]);
   if (!open) return null;
   return (
-    <div className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-ink/25 p-4 pt-[12vh]" onClick={onClose} role="dialog" aria-label="Search and jump">
+    <div className="anim-fade fixed inset-0 z-50 flex items-start justify-center bg-ink/25 p-4 pt-[12vh]" onClick={onClose} onKeyDown={e => { if (e.key === "Escape") onClose(); }} role="dialog" aria-label="Search and jump">
       <div className="anim-rise w-full max-w-xl overflow-hidden rounded-lg border border-line bg-surface shadow-pop" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2.5 border-b border-line px-4">
           <Search className="h-4 w-4 shrink-0 text-ink-3" aria-hidden />
           <input autoFocus value={q} onChange={e => setQ(e.target.value)} placeholder="Find a module, or type “section 302 IPC”, “define bail”…" aria-label="Search and jump"
             className="h-12 w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-3"
-            onKeyDown={e => { if (e.key === "ArrowDown") { e.preventDefault(); setI(x => Math.min(rows.length - 1, x + 1)); } if (e.key === "ArrowUp") { e.preventDefault(); setI(x => Math.max(0, x - 1)); } if (e.key === "Enter" && rows[i]) { rows[i].run(); onClose(); } if (e.key === "Escape") onClose(); }} />
+            onKeyDown={e => { if (e.key === "ArrowDown") { e.preventDefault(); setI(x => Math.min(rows.length - 1, x + 1)); } if (e.key === "ArrowUp") { e.preventDefault(); setI(x => Math.max(0, x - 1)); } if (e.key === "Enter" && rows[i]) { rows[i].run(); onClose(); } }} />
           <kbd>esc</kbd>
         </div>
         <ul className="max-h-[52vh] overflow-auto p-1.5">
@@ -65,7 +65,15 @@ export function Palette({ open, onClose }: { open: boolean; onClose: () => void 
 /** Backend reachability. Quiet when things work, explicit when they do not. */
 function Status() {
   const [s, setS] = useState<{ ok: boolean; ms: number; base: string } | null>(null);
-  useEffect(() => { let live = true; const tick = async () => { const r = await api.health(); if (live) setS(r); }; void tick(); const id = setInterval(tick, 20000); return () => { live = false; clearInterval(id); }; }, []);
+  // A hidden tab does not poll, so it neither spends requests nor keeps a scale-to-zero backend awake.
+  useEffect(() => {
+    let live = true;
+    const tick = async () => { if (document.hidden) return; const r = await api.health(); if (live) setS(r); };
+    void tick(); const id = setInterval(tick, 20000);
+    const onShow = () => { if (!document.hidden) void tick(); };
+    document.addEventListener("visibilitychange", onShow);
+    return () => { live = false; clearInterval(id); document.removeEventListener("visibilitychange", onShow); };
+  }, []);
   const where = s?.base.includes("localhost") || s?.base.includes("127.0.0.1") ? "Local API" : "API";
   return (
     <div className="hidden items-center gap-2 text-[12.5px] text-ink-3 sm:flex" title={s ? `${s.base} · ${s.ok ? `${Math.round(s.ms)} ms` : "unreachable"}` : "Checking the API"}>
@@ -162,7 +170,7 @@ export default function Shell() {
           </div>
         </header>
         <OfflineBanner />
-        <main className={cn("mx-auto w-full flex-1 px-4 py-8 md:px-8", st.density === "compact" ? "max-w-[1480px]" : "max-w-[1184px]")}><Outlet /></main>
+        <main className={cn("mx-auto w-full flex-1 px-4 py-8 md:px-8", st.density === "compact" ? "max-w-[1480px]" : "max-w-[1184px]")}><PageBoundary resetKey={loc.pathname}><Suspense fallback={<div className="grid gap-4"><Skeleton className="h-16" /><Skeleton className="h-64" /></div>}><Outlet /></Suspense></PageBoundary></main>
       </div>
       <Palette open={palette} onClose={() => setPalette(false)} />
       <Drawer open={filesOpen} onClose={() => setFilesOpen(false)} title={`Case file · ${count} saved`}><CaseFilesPanel compact onNavigate={() => setFilesOpen(false)} /></Drawer>

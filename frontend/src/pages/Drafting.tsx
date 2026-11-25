@@ -12,9 +12,10 @@ type Out = { draft: string; passages: { rank: number; citation: string; sources:
 export default function Drafting() {
   const t = useFetch(() => api.get<Tpl[]>("/draft/templates"));
   const [id, setId] = useState("legal_notice"); const [fields, setFields] = useState<Record<string, string>>({}); const [tone, setTone] = useState("Standard"); const [lang, setLang] = useState("English");
-  const [out, setOut] = useState<Out | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
-  const tpl = t.data?.find(x => x.id === id);
-  async function run() { setBusy(true); setErr(null); try { setOut(await api.post<Out>("/draft", { template: id, fields, tone, language: lang })); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
+  const [out, setOut] = useState<(Out & { tpl: string }) | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const tpl = t.data?.find(x => x.id === id); const draft = out?.tpl === id ? out : null;
+  // Tagged with its template: a draft that arrives after the document type was changed is not shown under the new one.
+  async function run() { const at = id; setBusy(true); setErr(null); try { setOut({ ...await api.post<Out>("/draft", { template: at, fields, tone, language: lang }), tpl: at }); } catch (e) { setErr(String(e)); } finally { setBusy(false); } }
   return (
     <Page title="Drafting Studio" desc="First drafts of notices, complaints, applications and memos, grounded in the provisions LawLine retrieves for your facts. Have a lawyer review any draft before it is used.">
       <Workbench input={
@@ -31,12 +32,12 @@ export default function Drafting() {
         </Card>}>
         {err && <ErrorBox error={err} retry={run} />}
         {busy && <Skeleton className="h-96" />}
-        {!out && !busy && !err && <Empty icon={<PenLine className="h-7 w-7" />} title="The draft will appear here" desc="Fill in the fields and write the draft. It cites only retrieved statutory passages, and any fact you leave out is marked as a [PLACEHOLDER]." />}
-        {out && !busy && (<>
-          <Section title={tpl?.name ?? "Draft"} desc="A first draft. Check every fact and citation before use." actions={<><CopyButton labelled text={out.draft} /><Button size="sm" onClick={() => download(`${id}.md`, out.draft)}><Download className="h-4 w-4" aria-hidden />Download</Button><PinButton labelled kind="draft" title={tpl?.name ?? "Draft"} body={out.draft} meta={{ to: "/app/draft" }} /></>}>
-            <Md text={out.draft} />
+        {!draft && !busy && !err && <Empty icon={<PenLine className="h-7 w-7" />} title="The draft will appear here" desc="Fill in the fields and write the draft. It cites only retrieved statutory passages, and any fact you leave out is marked as a [PLACEHOLDER]." />}
+        {draft && !busy && (<>
+          <Section title={tpl?.name ?? "Draft"} desc="A first draft. Check every fact and citation before use." actions={<><CopyButton labelled text={draft.draft} /><Button size="sm" onClick={() => download(`${id}.md`, draft.draft)}><Download className="h-4 w-4" aria-hidden />Download</Button><PinButton labelled kind="draft" title={tpl?.name ?? "Draft"} body={draft.draft} meta={{ to: "/app/draft" }} /></>}>
+            <Md text={draft.draft} />
           </Section>
-          <div><H3 className="mb-2">Provisions used</H3><Passages items={out.passages} /></div>
+          <div><H3 className="mb-2">Provisions used</H3><Passages items={draft.passages} /></div>
         </>)}
       </Workbench>
     </Page>

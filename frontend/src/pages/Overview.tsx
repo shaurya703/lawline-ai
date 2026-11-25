@@ -59,14 +59,14 @@ export default function Overview() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <Section title="Retrieval quality by task" desc="Recall@5 with the fine-tuned encoder. Higher is better." actions={<Link to="/app/analytics" className="link text-[13px]">All results</Link>}>
-          {ft.length ? <Chart height={300} data={[series("bm25", "BM25", C.warning), series("faiss", "Dense, fine-tuned", C.primary), series(ROUTED, "LawLine", C.fg)]} layout={{ barmode: "group", yaxis: { range: [0, 1], tickformat: ".1f" }, margin: { l: 36, r: 8, t: 8, b: 30 } }} /> : <Skeleton className="h-[300px]" />}
+          {a.error ? <ErrorBox error={a.error} /> : ft.length ? <Chart height={300} data={[series("bm25", "BM25", C.warning), series("faiss", "Dense, fine-tuned", C.primary), series(ROUTED, "LawLine", C.fg)]} layout={{ barmode: "group", yaxis: { range: [0, 1], tickformat: ".1f" }, margin: { l: 36, r: 8, t: 8, b: 30 } }} /> : <Skeleton className="h-[300px]" />}
         </Section>
         <div className="space-y-6">
           <Section title="Recent activity" actions={<Link to="/app/files" className="link text-[13px]">{pinned} saved</Link>}>
             {recent.length ? <ul className="-my-1 divide-y divide-line">{recent.map((r, i) => <li key={i} className="flex items-baseline gap-3 py-2 text-[13.5px]"><Link to={r.to ?? "/app"} className="min-w-0 flex-1 truncate text-ink hover:text-accent">{r.text}</Link><span className="num shrink-0 text-[12px] text-ink-3">{new Date(r.at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</span></li>)}</ul> : <p className="text-[13.5px] text-ink-3">Questions you ask and documents you work on will be listed here.</p>}
           </Section>
           <Section title="Bridge of the day" desc="One mapping from the old criminal codes to the 2023 codes.">
-            {pick ? <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-serif text-[20px] font-medium text-ink">{codeOf(pick.old_act)} s.{pick.old_section} <span className="text-ink-3">→</span> s.{pick.new_sections.join(", ")}</div><div className="mt-0.5 text-[13px] text-ink-3">{pick.concepts.slice(0, 3).join(" · ")}</div></div><Link to={`/app/transition?act=${codeOf(pick.old_act)}&section=${pick.old_section}`}><Button size="sm">Open</Button></Link></div> : <Skeleton className="h-12" />}
+            {pick ? <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="font-serif text-[20px] font-medium text-ink">{codeOf(pick.old_act)} s.{pick.old_section} <span className="text-ink-3">→</span> s.{pick.new_sections.join(", ")}</div><div className="mt-0.5 text-[13px] text-ink-3">{pick.concepts.slice(0, 3).join(" · ")}</div></div><Link to={`/app/transition?act=${codeOf(pick.old_act)}&section=${encodeURIComponent(pick.old_section)}`}><Button size="sm">Open</Button></Link></div> : map.error ? <ErrorBox error={map.error} /> : <Skeleton className="h-12" />}
           </Section>
         </div>
       </div>
