@@ -82,3 +82,22 @@ def test_filtered_search(tiny_chunks):
     fi = FaissIndex.build([f"d{i}#c0" for i in range(20)], vecs)
     hits = fi.search(vecs[3], k=3, allowed=np.array([5, 6, 7]))[0]
     assert {h[0] for h in hits} <= {"d5#c0", "d6#c0", "d7#c0"} and len(hits) == 3
+
+
+def test_bm25_scores_match_rank_bm25_exactly(tiny_chunks, tmp_path):
+    """The inverted index must reproduce rank_bm25 bit for bit, so swapping it in cannot move any benchmark number."""
+    import pickle
+    from rank_bm25 import BM25Okapi
+    ids = [c.chunk_id for c in tiny_chunks]; toks = [tokenize(c.text) for c in tiny_chunks]
+    ref = BM25Okapi(toks, k1=1.5, b=0.75)
+    idx = BM25Index.build(ids, [c.text for c in tiny_chunks])
+    queries = ["punishment for murder", "cheating and dishonestly inducing delivery of property property property",
+               "personal liberty procedure established by law", "the passport of the petitioner was impounded", "zzzzqqq nothing"]
+    for q in queries:
+        assert np.array_equal(idx.scores(tokenize(q)), ref.get_scores(tokenize(q))), q
+    with open(tmp_path / "bm25.pkl", "wb") as f:                       # an index saved in the old format still loads
+        pickle.dump({"ids": ids, "bm25": ref}, f)
+    old = BM25Index.load(tmp_path)
+    assert all(np.array_equal(old.scores(tokenize(q)), ref.get_scores(tokenize(q))) for q in queries)
+    mask = np.array([i % 2 == 0 for i in range(len(ids))])
+    assert all(ids.index(cid) % 2 == 0 for cid, _ in idx.search("punishment for murder property", k=5, mask=mask))
