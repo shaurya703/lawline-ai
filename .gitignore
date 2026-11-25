@@ -5,6 +5,7 @@ data/raw/
 outputs/indices/
 outputs/models/
 .env
+.streamlit/secrets.toml
 .pytest_cache/
 .coverage
 htmlcov/
@@ -20,3 +21,6 @@ data/processed/chunks.jsonl
 outputs/results/cache_*
 # scratch runs
 outputs/results/experiments/
+# runtime logs and tunnel state: they record local paths and client addresses
+outputs/*.log
+outputs/tunnel_url.txt

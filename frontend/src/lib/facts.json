@@ -95,7 +95,7 @@
     "embed": 5,
     "faiss": 4,
     "bm25": 4,
-    "graph": 35,
+    "graph": 1,
     "rerank": 146
   },
   "answers": {
